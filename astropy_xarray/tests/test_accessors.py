@@ -4,7 +4,7 @@ import pytest
 import xarray as xr
 from numpy.testing import assert_array_equal
 from astropy.units import Unit, UnitBase
-import astropy.units.errors
+import astropy.units.core
 
 from .. import accessors, conversion
 from ..index import AstropyIndex
@@ -937,7 +937,7 @@ def test_loc(obj, indexers, expected, error):
             {"x": Quantity([10, 30], "dm"), "y": Quantity([60], "s")},
             Quantity([[-1], [-2]], "s"),
             None,
-            astropy.units.errors.UnitConversionError,
+            astropy.units.core.UnitConversionError,
             id="data-incompatible units",
         ),
     ),

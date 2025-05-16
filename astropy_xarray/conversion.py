@@ -275,7 +275,7 @@ def convert_units_index(index, index_vars, units):
         try:
             converted = convert_units_variable(var, unit)
             converted_vars[name] = strip_units_variable(converted)
-        except (ValueError, astropy.units.errors.UnitConversionError) as e:
+        except (ValueError, astropy.units.core.UnitConversionError) as e:
             failed[name] = e
 
     if failed:
@@ -298,7 +298,7 @@ def convert_units_dataset(obj, units):
         unit = units.get(name)
         try:
             converted[name] = convert_units_variable(var, unit)
-        except (ValueError, astropy.units.errors.UnitConversionError) as e:
+        except (ValueError, astropy.units.core.UnitConversionError) as e:
             failed[name] = e
 
     indexes, index_vars = obj.xindexes.copy_indexes()
@@ -311,7 +311,7 @@ def convert_units_dataset(obj, units):
             converted_index = convert_units_index(idx, idx_vars, idx_units)
             indexes.update({k: converted_index for k in idx_vars})
             index_vars.update(converted_index.create_variables())
-        except (ValueError, astropy.units.errors.UnitConversionError) as e:
+        except (ValueError, astropy.units.core.UnitConversionError) as e:
             names = tuple(idx_vars)
             failed[names] = e
 
@@ -492,7 +492,7 @@ def convert_indexer_units(indexers, units):
         indexer_units = units.get(name)
         try:
             converted[name] = convert(indexer, indexer_units)
-        except (ValueError, astropy.units.errors.UnitConversionError) as e:
+        except (ValueError, astropy.units.core.UnitConversionError) as e:
             invalid[name] = e
 
     if invalid:

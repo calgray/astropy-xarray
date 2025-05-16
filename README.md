@@ -13,6 +13,7 @@ A convenience wrapper for using [astropy](https://www.astropy.org) with
 ## Usage
 
 To convert the variables of a `Dataset` to quantities:
+
 ```python
 In [1]: import astropy_xarray
    ...: import xarray as xr
@@ -37,7 +38,9 @@ Data variables:
     a        (x) float64 24B [s] 0.0 1.0 2.0
     b        (y) float64 24B [m] -3.0 5.0 1.0
 ```
+
 to convert to different units:
+
 ```python
 In [4]: c = q.astropy.to({"a": "ms", "b": "km"})
    ...: c
@@ -49,7 +52,9 @@ Data variables:
     a        (x) float64 24B [ms] 0.0 1e+03 2e+03
     b        (y) float64 24B [km] -0.003 0.005 0.001
 ```
+
 to convert back to non-quantities:
+
 ```python
 In [5]: d = c.astropy.dequantify()
    ...: d

@@ -16,7 +16,7 @@
 from xarray import Variable
 from xarray.core.indexes import Index, PandasIndex
 
-from . import conversion
+from astropy_xarray import conversion
 
 
 class AstropyIndex(Index):

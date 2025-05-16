@@ -6,9 +6,9 @@ from numpy.testing import assert_array_equal
 from astropy.units import Unit, UnitBase
 import astropy.units.core
 
-from .. import accessors, conversion
-from ..index import AstropyIndex
-from .utils import (
+from astropy_xarray import accessors, conversion
+from astropy_xarray.index import AstropyIndex
+from astropy_xarray.tests.utils import (
     assert_equal,
     assert_identical,
     assert_units_equal,

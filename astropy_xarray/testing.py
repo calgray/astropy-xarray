@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import conversion, formatting
+from astropy_xarray import conversion, formatting
 
 
 def assert_units_equal(a, b):

@@ -1,3 +1,18 @@
+# Copyright 2014-2024, xarray developers
+# Copyright 2025, Callan Gray
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from itertools import zip_longest
 
 import numpy as np
@@ -194,13 +209,13 @@ def format_array_flat(array, max_width: int):
 
 
 def inline_repr(quantity, max_width):
-    magnitude = quantity.magnitude
-    units = quantity.units
+    value = quantity.value
+    units = quantity.unit
 
-    units_repr = f"{units:~P}"
-    if isinstance(magnitude, np.ndarray):
-        data_repr = format_array_flat(magnitude, max_width - len(units_repr) - 3)
+    units_repr = f"{units:unicode}"
+    if isinstance(value, np.ndarray):
+        data_repr = format_array_flat(value, max_width - len(units_repr) - 3)
     else:
-        data_repr = maybe_truncate(repr(magnitude), max_width - len(units_repr) - 3)
+        data_repr = maybe_truncate(repr(value), max_width - len(units_repr) - 3)
 
     return f"[{units_repr}] {data_repr}"

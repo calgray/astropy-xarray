@@ -1,9 +1,14 @@
+[build-system]
+requires = ["setuptools >= 64", "setuptools_scm >= 7.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "pint-xarray"
+name = "astropy-xarray"
 authors = [
-    {name = "Tom Nicholas", email = "tomnicholas1@googlemail.com"}
+    {name = "Tom Nicholas", email = "tomnicholas1@googlemail.com"},
+    {name = "Callan Gray", email = "calj.gray@gmail.com"},
 ]
-description = "Physical units interface to xarray using Pint"
+description = "Physical units interface to xarray using astropy"
 license = {text = "Apache-2"}
 readme = "README.md"
 classifiers = [
@@ -22,23 +27,30 @@ requires-python = ">=3.10"
 dependencies = [
     "numpy >= 1.23",
     "xarray >= 2022.06.0",
-    "pint >= 0.21",
+    "astropy >= 5.0.0",
 ]
 dynamic = ["version"]
 
 [project.urls]
-Home = "https://github.com/xarray-contrib/pint-xarray"
-Documentation = "https://pint-xarray.readthedocs.io/en/stable"
+Home = "https://github.com/calgray/astropy-xarray"
+Documentation = "https://astropy-xarray.readthedocs.io/en/stable"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+]
+docs = [
+    "sphinx>=8.0",
+    "sphinx_auto_summary_accessors",
+    "nbsphinx",
+    "sphinx_rtd_theme"
+]
 
 [tool.setuptools.packages.find]
 include = [
-    "pint_xarray",
-    "pint_xarray.tests",
+    "astropy_xarray",
+    "astropy_xarray.tests",
 ]
-
-[build-system]
-requires = ["setuptools >= 64", "setuptools_scm >= 7.0"]
-build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
 fallback_version = "999"
@@ -51,10 +63,10 @@ profile = "black"
 skip_gitignore = "true"
 force_to_top = "true"
 default_section = "THIRDPARTY"
-known_first_party = "pint_xarray"
+known_first_party = "astropy_xarray"
 
 [tool.coverage.run]
-source = ["pint_xarray"]
+source = ["astropy_xarray"]
 branch = true
 
 [tool.coverage.report]

@@ -1,4 +1,4 @@
-pint!=0.24.0
+astropy
 numpy<2
 scipy
 dask[array]

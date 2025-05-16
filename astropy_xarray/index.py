@@ -1,10 +1,25 @@
+# Copyright 2014-2024, xarray developers
+# Copyright 2025, Callan Gray
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from xarray import Variable
 from xarray.core.indexes import Index, PandasIndex
 
 from . import conversion
 
 
-class PintIndex(Index):
+class AstropyIndex(Index):
     def __init__(self, *, index, units):
         """create a unit-aware MetaIndex
 
@@ -26,7 +41,7 @@ class PintIndex(Index):
 
         index_vars_units = {}
         for name, var in index_vars.items():
-            data = conversion.array_attach_units(var.data, self.units[name])
+            data = conversion.array_attach_unit(var.data, self.units[name])
             var_units = Variable(var.dims, data, attrs=var.attrs, encoding=var.encoding)
             index_vars_units[name] = var_units
 
@@ -72,7 +87,7 @@ class PintIndex(Index):
         raise NotImplementedError()
 
     def equals(self, other):
-        if not isinstance(other, PintIndex):
+        if not isinstance(other, AstropyIndex):
             return False
 
         # for now we require exactly matching units to avoid the potentially expensive conversion

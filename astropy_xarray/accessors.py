@@ -1,43 +1,32 @@
-# TODO is it possible to import pint-xarray from within xarray if pint is present?
-import itertools
+# Copyright 2014-2024, xarray developers
+# Copyright 2025, Callan Gray
 
-import pint
-from pint import Unit
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import itertools
+from typing import Final
+
+import astropy
+import astropy.units
 from xarray import register_dataarray_accessor, register_dataset_accessor
 from xarray.core.dtypes import NA
 
-from . import conversion
-from .conversion import no_unit_values
-from .errors import format_error_message
+from astropy_xarray import conversion
+from astropy_xarray.conversion import no_unit_values
+from astropy_xarray.errors import format_error_message
 
-_default = object()
-
-
-def setup_registry(registry):
-    """set up the given registry for use with pint_xarray
-
-    Namely, it enables ``force_ndarray_like`` to make sure results are always
-    duck arrays.
-
-    Parameters
-    ----------
-    registry : pint.UnitRegistry
-        The registry to modify
-    """
-    if not registry.force_ndarray and not registry.force_ndarray_like:
-        registry.force_ndarray_like = True
-
-    return registry
-
-
-default_registry = setup_registry(pint.get_application_registry())
-
-# TODO could/should we overwrite xr.open_dataset and xr.open_mfdataset to make
-# them apply units upon loading???
-# TODO could even override the decode_cf kwarg?
-
-# TODO docstrings
-# TODO type hints
+# sentinel to fallback to attribute unit, then value container type
+_default: Final = object()
 
 
 def is_dict_like(obj):
@@ -75,7 +64,7 @@ def units_to_str_or_none(mapping, unit_format):
     formatter = str if not unit_format else lambda v: unit_format.format(v)
 
     return {
-        key: formatter(value) if isinstance(value, Unit) else value
+        key: formatter(value) if isinstance(value, astropy.units.UnitBase) else value
         for key, value in mapping.items()
     }
 
@@ -98,47 +87,22 @@ def either_dict_or_kwargs(positional, keywords, method_name):
         return keywords
 
 
-def get_registry(unit_registry, new_units, existing_units):
-    units = itertools.chain(new_units.values(), existing_units.values())
-    registries = {unit._REGISTRY for unit in units if isinstance(unit, Unit)}
-
-    if unit_registry is None:
-        if not registries:
-            unit_registry = default_registry
-        elif len(registries) == 1:
-            (unit_registry,) = registries
-    registries.add(unit_registry)
-
-    if len(registries) > 1 or unit_registry not in registries:
-        raise ValueError(
-            "using multiple unit registries in the same object is not supported"
-        )
-
-    if not unit_registry.force_ndarray_like and not unit_registry.force_ndarray:
-        raise ValueError(
-            "invalid registry. Please enable 'force_ndarray_like' or 'force_ndarray'."
-        )
-
-    return unit_registry
-
-
-def _decide_units(units, registry, unit_attribute):
-    if units is _default and unit_attribute in (None, _default):
+def _decide_unit(unit, registry, unit_attribute):
+    if unit is _default and unit_attribute in (None, _default):
         # or warn and return None?
         raise ValueError("no units given")
-    elif units in no_unit_values or isinstance(units, Unit):
-        # TODO what happens if they pass in a Unit from a different registry
-        return units
-    elif units is _default:
+    elif unit in no_unit_values or isinstance(unit, astropy.units.UnitBase):
+        return unit
+    elif unit is _default:
         if unit_attribute in no_unit_values:
             return unit_attribute
-        if isinstance(unit_attribute, Unit):
-            units = unit_attribute
+        if isinstance(unit_attribute, astropy.units.UnitBase):
+            unit = unit_attribute
         else:
-            units = registry.parse_units(unit_attribute)
+            unit = astropy.units.Unit(unit_attribute)
     else:
-        units = registry.parse_units(units)
-    return units
+        unit = astropy.units.Unit(unit)
+    return unit
 
 
 class DatasetLocIndexer:
@@ -225,12 +189,12 @@ class DataArrayLocIndexer:
         self.da.loc[stripped_indexers] = values
 
 
-@register_dataarray_accessor("pint")
-class PintDataArrayAccessor:
+@register_dataarray_accessor("astropy")
+class AstropyDataArrayAccessor:
     """
-    Access methods for DataArrays with units using Pint.
+    Access methods for DataArrays with units using Astropy.
 
-    Methods and attributes can be accessed through the `.pint` attribute.
+    Methods and attributes can be accessed through the `.astropy` attribute.
     """
 
     def __init__(self, da):
@@ -240,7 +204,7 @@ class PintDataArrayAccessor:
         """
         Attach units to the DataArray.
 
-        Units can be specified as a pint.Unit or as a string, which will be
+        Units can be specified as a astropy.units.Unit or as a string, which will be
         parsed by the given unit registry. If no units are specified then the
         units will be parsed from the `'units'` entry of the DataArray's
         `.attrs`. Will raise a ValueError if the DataArray already contains a
@@ -261,14 +225,14 @@ class PintDataArrayAccessor:
         ----------
         units : unit-like or mapping of hashable to unit-like, optional
             Physical units to use for this DataArray. If a str or
-            pint.Unit, will be used as the DataArray's units. If a
+            astropy.units.Unit, will be used as the DataArray's units. If a
             dict-like, it should map a variable name to the desired
             unit (use the DataArray's name to refer to its data). If
             not provided, ``quantify`` will try to read them from
-            ``DataArray.attrs['units']`` using pint's parser. The
+            ``DataArray.attrs['units']`` using astropy's parser. The
             ``"units"`` attribute will be removed from all variables
             except from dimension coordinates.
-        unit_registry : pint.UnitRegistry, optional
+        unit_registry : optional
             Unit registry to be used for the units attached to this DataArray.
             If not given then a default registry will be created.
         **unit_kwargs
@@ -292,9 +256,9 @@ class PintDataArrayAccessor:
         ...     dims=["wavelength"],
         ...     coords={"wavelength": [1e-4, 2e-4, 4e-4, 6e-4, 1e-3, 2e-3]},
         ... )
-        >>> da.pint.quantify(units="Hz")
+        >>> da.astropy.quantify(units="Hz")
         <xarray.DataArray (wavelength: 6)> Size: 48B
-        <Quantity([0.4 0.9 1.7 4.8 3.2 9.1], 'hertz')>
+        <Quantity [0.4, 0.9, 1.7, 4.8, 3.2, 9.1] Hz>
         Coordinates:
           * wavelength  (wavelength) float64 48B 0.0001 0.0002 0.0004 0.0006 0.001 0.002
 
@@ -305,24 +269,24 @@ class PintDataArrayAccessor:
         ...     dims=["wavelength"],
         ...     attrs={"units": "Hz"},
         ... )
-        >>> da.pint.quantify(units=None)
+        >>> da.astropy.quantify(units=None)
         <xarray.DataArray (wavelength: 2)> Size: 16B
         array([0.4, 0.9])
         Dimensions without coordinates: wavelength
 
         Quantify with the same unit:
 
-        >>> q = da.pint.quantify()
+        >>> q = da.astropy.quantify()
         >>> q
         <xarray.DataArray (wavelength: 2)> Size: 16B
-        <Quantity([0.4 0.9], 'hertz')>
+        <Quantity [0.4, 0.9] Hz>
         Dimensions without coordinates: wavelength
-        >>> q.pint.quantify("Hz")
+        >>> q.astropy.quantify("Hz")
         <xarray.DataArray (wavelength: 2)> Size: 16B
-        <Quantity([0.4 0.9], 'hertz')>
+        <Quantity [0.4, 0.9] Hz>
         Dimensions without coordinates: wavelength
         """
-        if units is None or isinstance(units, (str, pint.Unit)):
+        if units is None or isinstance(units, (str, astropy.units.UnitBase)):
             if self.da.name in unit_kwargs:
                 raise ValueError(
                     f"ambiguous values given for {repr(self.da.name)}:"
@@ -333,7 +297,7 @@ class PintDataArrayAccessor:
 
         units = either_dict_or_kwargs(units, unit_kwargs, "quantify")
 
-        registry = get_registry(unit_registry, units, conversion.extract_units(self.da))
+        registry = astropy.units
 
         unit_attrs = conversion.extract_unit_attributes(self.da)
 
@@ -343,8 +307,8 @@ class PintDataArrayAccessor:
         for name, (unit, attr) in possible_new_units.items():
             if unit not in (_default, None) or attr not in (_default, None):
                 try:
-                    new_units[name] = _decide_units(unit, registry, attr)
-                except (ValueError, pint.UndefinedUnitError) as e:
+                    new_units[name] = _decide_unit(unit, registry, attr)
+                except (ValueError, AttributeError) as e:
                     if unit not in (_default, None):
                         type = "parameter"
                         reported_unit = unit
@@ -360,7 +324,7 @@ class PintDataArrayAccessor:
         existing_units = {
             name: unit
             for name, unit in conversion.extract_units(self.da).items()
-            if isinstance(unit, Unit)
+            if isinstance(unit, astropy.units.UnitBase)
         }
         overwritten_units = {
             name: (old, new)
@@ -391,57 +355,54 @@ class PintDataArrayAccessor:
         Convert the units of the DataArray to string attributes.
 
         Will replace ``.attrs['units']`` on each variable with a string
-        representation of the ``pint.Unit`` instance.
+        representation of the ``astropy.units.Unit`` instance.
 
         Parameters
         ----------
         format : str, default: None
-            The format specification (as accepted by pint) used for the string
-            representations. If ``None``, the registry's default
-            (:py:attr:`pint.UnitRegistry.default_format`) is used instead.
+            The format specification (as accepted by astropy) used for the string
+            representations. If ``None``, the default
+            (:py:class:`astropy.units.format.Unicode`) is used instead.
 
         Returns
         -------
         dequantified : DataArray
             DataArray whose array data is unitless, and of the type
-            that was previously wrapped by `pint.Quantity`.
+            that was previously wrapped by `astropy.Quantity`.
 
         See Also
         --------
-        :doc:`pint:user/formatting`
-            pint's string formatting guide
+        :doc:`astropy:units/format`
+            astropy's string formatting guide
 
         Examples
         --------
         >>> da = xr.DataArray([0, 1], dims="x")
-        >>> q = da.pint.quantify("m / s")
+        >>> q = da.astropy.quantify("m / s")
         >>> q
         <xarray.DataArray (x: 2)> Size: 16B
-        <Quantity([0 1], 'meter / second')>
+        <Quantity [0., 1.] m / s>
         Dimensions without coordinates: x
 
-        >>> q.pint.dequantify(format="P")
+        >>> q.astropy.dequantify(format="unicode")
         <xarray.DataArray (x: 2)> Size: 16B
-        array([0, 1])
+        array([0., 1.])
         Dimensions without coordinates: x
         Attributes:
-            units:    meter/second
-        >>> q.pint.dequantify(format="~P")
+            units:    m s⁻¹
+        >>> q.astropy.dequantify(format="generic")
         <xarray.DataArray (x: 2)> Size: 16B
-        array([0, 1])
+        array([0., 1.])
         Dimensions without coordinates: x
         Attributes:
-            units:    m/s
+            units:    m / s
 
-        Use the registry's default format
-
-        >>> pint_xarray.unit_registry.default_format = "~L"
-        >>> q.pint.dequantify()
+        >>> q.astropy.dequantify(format="latex")
         <xarray.DataArray (x: 2)> Size: 16B
-        array([0, 1])
+        array([0., 1.])
         Dimensions without coordinates: x
         Attributes:
-            units:    \frac{\mathrm{m}}{\mathrm{s}}
+            units:    $\mathrm{\frac{m}{s}}$
         """
         units = conversion.extract_unit_attributes(self.da)
         units.update(conversion.extract_units(self.da))
@@ -456,36 +417,27 @@ class PintDataArrayAccessor:
         )
 
     @property
-    def magnitude(self):
-        """the magnitude of the data or the data itself if not a quantity."""
+    def value(self):
+        """the value of the data or the data itself if not a quantity."""
         data = self.da.data
-        return getattr(data, "magnitude", data)
+        return getattr(data, "value", data)
 
     @property
-    def units(self):
+    def unit(self):
         """the units of the data or :py:obj:`None` if not a quantity.
 
         Setting the units is possible, but only if the data is not already a quantity.
         """
-        return getattr(self.da.data, "units", None)
+        return getattr(self.da.data, "unit", None)
 
-    @units.setter
-    def units(self, units):
-        self.da.data = conversion.array_attach_units(self.da.data, units)
+    @unit.setter
+    def unit(self, unit):
+        self.da.data = conversion.array_attach_unit(self.da.data, unit)
 
     @property
-    def dimensionality(self):
+    def physical_type(self):
         """get the dimensionality of the data or :py:obj:`None` if not a quantity."""
-        return getattr(self.da.data, "dimensionality", None)
-
-    @property
-    def registry(self):
-        # TODO is this a bad idea? (see GH issue #1071 in pint)
-        return getattr(self.da.data, "_REGISTRY", None)
-
-    @registry.setter
-    def registry(self, _):
-        raise AttributeError("Don't try to change the registry once created")
+        return getattr(self.da.data, "physical_type", None)
 
     def to(self, units=None, **unit_kwargs):
         """convert the quantities in a DataArray
@@ -493,9 +445,9 @@ class PintDataArrayAccessor:
         Parameters
         ----------
         units : unit-like or mapping of hashable to unit-like, optional
-            The units to convert to. If a unit name or ``pint.Unit``
+            The units to convert to. If a unit name or ``astropy.units.Unit``
             object, convert the DataArray's data. If a dict-like, it
-            has to map a variable name to a unit name or ``pint.Unit``
+            has to map a variable name to a unit name or ``astropy.units.Unit``
             object.
         **unit_kwargs
             The kwargs form of ``units``. Can only be used for
@@ -509,81 +461,81 @@ class PintDataArrayAccessor:
         Examples
         --------
         >>> da = xr.DataArray(
-        ...     data=np.linspace(0, 1, 5) * ureg.m,
-        ...     coords={"u": ("x", np.arange(5) * ureg.s)},
+        ...     data=np.linspace(0, 1, 5) * u.m,
+        ...     coords={"u": ("x", np.arange(5) * u.s)},
         ...     dims="x",
         ...     name="arr",
         ... )
         >>> da
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([0.   0.25 0.5  0.75 1.  ], 'meter')>
+        <Quantity [0.  , 0.25, 0.5 , 0.75, 1.  ] m>
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
 
         Convert the data
 
-        >>> da.pint.to("mm")
+        >>> da.astropy.to("mm")
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
-        >>> da.pint.to(ureg.mm)
+        >>> da.astropy.to(u.mm)
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
-        >>> da.pint.to({da.name: "mm"})
+        >>> da.astropy.to({da.name: "mm"})
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
 
         Convert coordinates
 
-        >>> da.pint.to({"u": ureg.ms})
+        >>> da.astropy.to({"u": u.ms})
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([0.   0.25 0.5  0.75 1.  ], 'meter')>
+        <Quantity [0.  , 0.25, 0.5 , 0.75, 1.  ] m>
         Coordinates:
             u        (x) float64 40B [ms] 0.0 1e+03 2e+03 3e+03 4e+03
         Dimensions without coordinates: x
-        >>> da.pint.to(u="ms")
+        >>> da.astropy.to(u="ms")
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([0.   0.25 0.5  0.75 1.  ], 'meter')>
+        <Quantity [0.  , 0.25, 0.5 , 0.75, 1.  ] m>
         Coordinates:
             u        (x) float64 40B [ms] 0.0 1e+03 2e+03 3e+03 4e+03
         Dimensions without coordinates: x
 
         Convert both simultaneously
 
-        >>> da.pint.to("mm", u="ms")
+        >>> da.astropy.to("mm", u="ms")
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
             u        (x) float64 40B [ms] 0.0 1e+03 2e+03 3e+03 4e+03
         Dimensions without coordinates: x
-        >>> da.pint.to({"arr": ureg.mm, "u": ureg.ms})
+        >>> da.astropy.to({"arr": u.mm, "u": u.ms})
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
             u        (x) float64 40B [ms] 0.0 1e+03 2e+03 3e+03 4e+03
         Dimensions without coordinates: x
-        >>> da.pint.to(arr="mm", u="ms")
+        >>> da.astropy.to(arr="mm", u="ms")
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
             u        (x) float64 40B [ms] 0.0 1e+03 2e+03 3e+03 4e+03
         Dimensions without coordinates: x
         """
-        if isinstance(units, (str, pint.Unit)):
+        if isinstance(units, (str, astropy.units.UnitBase)):
             unit_kwargs[self.da.name] = units
             units = None
         elif units is not None and not is_dict_like(units):
             raise ValueError(
-                "units must be either a string, a pint.Unit object or a dict-like,"
+                "units must be either a string, a astropy.units.Unit object or a dict-like,"
                 f" but got {units!r}"
             )
 
@@ -604,7 +556,7 @@ class PintDataArrayAccessor:
         See Also
         --------
         xarray.DataArray.chunk
-        xarray.Dataset.pint.chunk
+        xarray.Dataset.astropy.chunk
         """
         units = conversion.extract_units(self.da)
         stripped = conversion.strip_units(self.da)
@@ -634,8 +586,8 @@ class PintDataArrayAccessor:
 
         See Also
         --------
-        xarray.Dataset.pint.reindex
-        xarray.DataArray.pint.reindex_like
+        xarray.Dataset.astropy.reindex
+        xarray.DataArray.astropy.reindex_like
         xarray.DataArray.reindex
         """
         indexers = either_dict_or_kwargs(indexers, indexers_kwargs, "reindex")
@@ -679,8 +631,8 @@ class PintDataArrayAccessor:
 
         See Also
         --------
-        xarray.Dataset.pint.reindex_like
-        xarray.DataArray.pint.reindex
+        xarray.Dataset.astropy.reindex_like
+        xarray.DataArray.astropy.reindex
         xarray.DataArray.reindex_like
         """
         indexer_units = conversion.extract_units(other)
@@ -721,8 +673,8 @@ class PintDataArrayAccessor:
 
         See Also
         --------
-        xarray.Dataset.pint.interp
-        xarray.DataArray.pint.interp_like
+        xarray.Dataset.astropy.interp
+        xarray.DataArray.astropy.interp_like
         xarray.DataArray.interp
         """
         indexers = either_dict_or_kwargs(coords, coords_kwargs, "interp")
@@ -760,8 +712,8 @@ class PintDataArrayAccessor:
 
         See Also
         --------
-        xarray.Dataset.pint.interp_like
-        xarray.DataArray.pint.interp
+        xarray.Dataset.astropy.interp_like
+        xarray.DataArray.astropy.interp
         xarray.DataArray.interp_like
         """
         indexer_units = conversion.extract_units(other)
@@ -792,7 +744,7 @@ class PintDataArrayAccessor:
 
         See Also
         --------
-        xarray.Dataset.pint.sel
+        xarray.Dataset.astropy.sel
         xarray.DataArray.sel
         xarray.Dataset.sel
         """
@@ -847,7 +799,7 @@ class PintDataArrayAccessor:
 
         See Also
         --------
-        xarray.Dataset.pint.drop_sel
+        xarray.Dataset.astropy.drop_sel
         xarray.DataArray.drop_sel
         xarray.Dataset.drop_sel
         """
@@ -882,7 +834,7 @@ class PintDataArrayAccessor:
         See Also
         --------
         xarray.DataArray.ffill
-        xarray.DataArray.pint.bfill
+        xarray.DataArray.astropy.bfill
         """
         units = conversion.extract_units(self.da)
         stripped = conversion.strip_units(self.da)
@@ -899,7 +851,7 @@ class PintDataArrayAccessor:
         See Also
         --------
         xarray.DataArray.bfill
-        xarray.DataArray.pint.ffill
+        xarray.DataArray.astropy.ffill
         """
         units = conversion.extract_units(self.da)
         stripped = conversion.strip_units(self.da)
@@ -929,7 +881,7 @@ class PintDataArrayAccessor:
 
         See Also
         --------
-        xarray.Dataset.pint.interpolate_na
+        xarray.Dataset.astropy.interpolate_na
         xarray.DataArray.interpolate_na
         """
         units = conversion.extract_units(self.da)
@@ -948,12 +900,12 @@ class PintDataArrayAccessor:
         return conversion.attach_units(interpolated, units)
 
 
-@register_dataset_accessor("pint")
-class PintDatasetAccessor:
+@register_dataset_accessor("astropy")
+class AstropyDatasetAccessor:
     """
-    Access methods for DataArrays with units using Pint.
+    Access methods for DataArrays with units using Astropy.
 
-    Methods and attributes can be accessed through the `.pint` attribute.
+    Methods and attributes can be accessed through the `.astropy` attribute.
     """
 
     def __init__(self, ds):
@@ -963,7 +915,7 @@ class PintDatasetAccessor:
         """
         Attach units to the variables of the Dataset.
 
-        Units can be specified as a ``pint.Unit`` or as a
+        Units can be specified as a ``astropy.units.Unit`` or as a
         string, which will be parsed by the given unit registry. If no
         units are specified then the units will be parsed from the
         ``"units"`` entry of the Dataset variable's ``.attrs``. Will
@@ -986,11 +938,11 @@ class PintDatasetAccessor:
         units : mapping of hashable to unit-like, optional
             Physical units to use for particular DataArrays in this
             Dataset. It should map variable names to units (unit names
-            or ``pint.Unit`` objects). If not provided, ``quantify``
+            or ``astropy.units.Unit`` objects). If not provided, ``quantify``
             will try to read them from ``Dataset[var].attrs['units']``
-            using pint's parser. The ``"units"`` attribute will be
+            using astropy's parser. The ``"units"`` attribute will be
             removed from all variables except from dimension coordinates.
-        unit_registry : pint.UnitRegistry, optional
+        unit_registry : optional
             Unit registry to be used for the units attached to each
             DataArray in this Dataset. If not given then a default
             registry will be created.
@@ -1015,61 +967,61 @@ class PintDatasetAccessor:
         ...     coords={"x": [0, 1, 2], "u": ("x", [-1, 0, 1], {"units": "s"})},
         ... )
 
-        >>> ds.pint.quantify()
+        >>> ds.astropy.quantify()
         <xarray.Dataset> Size: 96B
         Dimensions:  (x: 3)
         Coordinates:
           * x        (x) int64 24B 0 1 2
-            u        (x) int64 24B [s] -1 0 1
+            u        (x) float64 24B [s] -1.0 0.0 1.0
         Data variables:
-            a        (x) int64 24B [m] 0 3 2
+            a        (x) float64 24B [m] 0.0 3.0 2.0
             b        (x) int64 24B 5 -2 1
-        >>> ds.pint.quantify({"b": "dm"})
+        >>> ds.astropy.quantify({"b": "dm"})
         <xarray.Dataset> Size: 96B
         Dimensions:  (x: 3)
         Coordinates:
           * x        (x) int64 24B 0 1 2
-            u        (x) int64 24B [s] -1 0 1
+            u        (x) float64 24B [s] -1.0 0.0 1.0
         Data variables:
-            a        (x) int64 24B [m] 0 3 2
-            b        (x) int64 24B [dm] 5 -2 1
+            a        (x) float64 24B [m] 0.0 3.0 2.0
+            b        (x) float64 24B [dm] 5.0 -2.0 1.0
 
         Don't quantify specific variables:
 
-        >>> ds.pint.quantify({"a": None})
+        >>> ds.astropy.quantify({"a": None})
         <xarray.Dataset> Size: 96B
         Dimensions:  (x: 3)
         Coordinates:
           * x        (x) int64 24B 0 1 2
-            u        (x) int64 24B [s] -1 0 1
+            u        (x) float64 24B [s] -1.0 0.0 1.0
         Data variables:
             a        (x) int64 24B 0 3 2
             b        (x) int64 24B 5 -2 1
 
         Quantify with the same unit:
 
-        >>> q = ds.pint.quantify()
+        >>> q = ds.astropy.quantify()
         >>> q
         <xarray.Dataset> Size: 96B
         Dimensions:  (x: 3)
         Coordinates:
           * x        (x) int64 24B 0 1 2
-            u        (x) int64 24B [s] -1 0 1
+            u        (x) float64 24B [s] -1.0 0.0 1.0
         Data variables:
-            a        (x) int64 24B [m] 0 3 2
+            a        (x) float64 24B [m] 0.0 3.0 2.0
             b        (x) int64 24B 5 -2 1
-        >>> q.pint.quantify({"a": "m"})
+        >>> q.astropy.quantify({"a": "m"})
         <xarray.Dataset> Size: 96B
         Dimensions:  (x: 3)
         Coordinates:
           * x        (x) int64 24B 0 1 2
-            u        (x) int64 24B [s] -1 0 1
+            u        (x) float64 24B [s] -1.0 0.0 1.0
         Data variables:
-            a        (x) int64 24B [m] 0 3 2
+            a        (x) float64 24B [m] 0.0 3.0 2.0
             b        (x) int64 24B 5 -2 1
         """
         units = either_dict_or_kwargs(units, unit_kwargs, "quantify")
-        registry = get_registry(unit_registry, units, conversion.extract_units(self.ds))
+        registry = astropy.units
 
         unit_attrs = conversion.extract_unit_attributes(self.ds)
 
@@ -1079,8 +1031,8 @@ class PintDatasetAccessor:
         for name, (unit, attr) in possible_new_units.items():
             if unit is not _default or attr not in (None, _default):
                 try:
-                    new_units[name] = _decide_units(unit, registry, attr)
-                except (ValueError, pint.UndefinedUnitError) as e:
+                    new_units[name] = _decide_unit(unit, registry, attr)
+                except (ValueError, AttributeError) as e:
                     if unit is not _default:
                         type = "parameter"
                         reported_unit = unit
@@ -1096,7 +1048,7 @@ class PintDatasetAccessor:
         existing_units = {
             name: unit
             for name, unit in conversion.extract_units(self.ds).items()
-            if isinstance(unit, Unit)
+            if isinstance(unit, astropy.units.UnitBase)
         }
         overwritten_units = {
             name: (old, new)
@@ -1127,82 +1079,79 @@ class PintDatasetAccessor:
         Convert units from the Dataset to string attributes.
 
         Will replace ``.attrs['units']`` on each variable with a string
-        representation of the ``pint.Unit`` instance.
+        representation of the ``astropy.units.Unit`` instance.
 
         Parameters
         ----------
         format : str, default: None
-            The format specification (as accepted by pint's unit formatter) used for the
-            string representations. If ``None``, the registry's default
-            (:py:attr:`pint.UnitRegistry.default_format`) is used instead.
+            The format specification (as accepted by astropy's unit formatter) used for the
+            string representations. If ``None``, the default
+            (:py:class:`astropy.units.format.Unicode`) is used instead.
 
         Returns
         -------
         dequantified : Dataset
             Dataset whose data variables are unitless, and of the type
-            that was previously wrapped by ``pint.Quantity``.
+            that was previously wrapped by ``astropy.Quantity``.
 
         See Also
         --------
-        :doc:`pint:user/formatting`
-            pint's string formatting guide
+        :std:doc:`astropy:units/format`
+            astropy's string formatting guide
 
         Examples
         --------
         >>> ds = xr.Dataset({"a": ("x", [0, 1]), "b": ("y", [2, 3, 4])})
-        >>> q = ds.pint.quantify({"a": "m / s", "b": "s"})
+        >>> q = ds.astropy.quantify({"a": "m / s", "b": "s"})
         >>> q
         <xarray.Dataset> Size: 40B
         Dimensions:  (x: 2, y: 3)
         Dimensions without coordinates: x, y
         Data variables:
-            a        (x) int64 16B [m/s] 0 1
-            b        (y) int64 24B [s] 2 3 4
+            a        (x) float64 16B [m s⁻¹] 0.0 1.0
+            b        (y) float64 24B [s] 2.0 3.0 4.0
 
-        >>> d = q.pint.dequantify(format="P")
+        >>> d = q.astropy.dequantify(format="unicode")
         >>> d.a
         <xarray.DataArray 'a' (x: 2)> Size: 16B
-        array([0, 1])
+        array([0., 1.])
         Dimensions without coordinates: x
         Attributes:
-            units:    meter/second
+            units:    m s⁻¹
         >>> d.b
         <xarray.DataArray 'b' (y: 3)> Size: 24B
-        array([2, 3, 4])
-        Dimensions without coordinates: y
-        Attributes:
-            units:    second
-
-        >>> d = q.pint.dequantify(format="~P")
-        >>> d.a
-        <xarray.DataArray 'a' (x: 2)> Size: 16B
-        array([0, 1])
-        Dimensions without coordinates: x
-        Attributes:
-            units:    m/s
-        >>> d.b
-        <xarray.DataArray 'b' (y: 3)> Size: 24B
-        array([2, 3, 4])
+        array([2., 3., 4.])
         Dimensions without coordinates: y
         Attributes:
             units:    s
 
-        Use the registry's default format
-
-        >>> pint_xarray.unit_registry.default_format = "~L"
-        >>> d = q.pint.dequantify()
+        >>> d = q.astropy.dequantify(format="generic")
         >>> d.a
         <xarray.DataArray 'a' (x: 2)> Size: 16B
-        array([0, 1])
+        array([0., 1.])
         Dimensions without coordinates: x
         Attributes:
-            units:    \frac{\mathrm{m}}{\mathrm{s}}
+            units:    m / s
         >>> d.b
         <xarray.DataArray 'b' (y: 3)> Size: 24B
-        array([2, 3, 4])
+        array([2., 3., 4.])
         Dimensions without coordinates: y
         Attributes:
-            units:    \mathrm{s}
+            units:    s
+
+        >>> d = q.astropy.dequantify(format="latex")
+        >>> d.a
+        <xarray.DataArray 'a' (x: 2)> Size: 16B
+        array([0., 1.])
+        Dimensions without coordinates: x
+        Attributes:
+            units:    $\mathrm{\frac{m}{s}}$
+        >>> d.b
+        <xarray.DataArray 'b' (y: 3)> Size: 24B
+        array([2., 3., 4.])
+        Dimensions without coordinates: y
+        Attributes:
+            units:    $\mathrm{s}$
         """
         units = conversion.extract_unit_attributes(self.ds)
         units.update(conversion.extract_units(self.ds))
@@ -1222,9 +1171,9 @@ class PintDatasetAccessor:
         Parameters
         ----------
         units : unit-like or mapping of hashable to unit-like, optional
-            The units to convert to. If a unit name or ``pint.Unit``
+            The units to convert to. If a unit name or ``astropy.units.Unit``
             object, convert all the object's data variables. If a dict-like, it
-            maps variable names to unit names or ``pint.Unit``
+            maps variable names to unit names or ``astropy.units.Unit``
             objects.
         **unit_kwargs
             The kwargs form of ``units``. Can only be used for
@@ -1239,16 +1188,16 @@ class PintDatasetAccessor:
         --------
         >>> ds = xr.Dataset(
         ...     data_vars={
-        ...         "a": ("x", np.linspace(0, 1, 5) * ureg.m),
-        ...         "b": ("x", np.linspace(-1, 0, 5) * ureg.kg),
+        ...         "a": ("x", np.linspace(0, 1, 5) * u.m),
+        ...         "b": ("x", np.linspace(-1, 0, 5) * u.kg),
         ...     },
-        ...     coords={"u": ("x", np.arange(5) * ureg.s)},
+        ...     coords={"u": ("x", np.arange(5) * u.s)},
         ... )
         >>> ds
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
         Data variables:
             a        (x) float64 40B [m] 0.0 0.25 0.5 0.75 1.0
@@ -1256,20 +1205,20 @@ class PintDatasetAccessor:
 
         Convert the data
 
-        >>> ds.pint.to({"a": "mm", "b": ureg.g})
+        >>> ds.astropy.to({"a": "mm", "b": u.g})
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
         Data variables:
             a        (x) float64 40B [mm] 0.0 250.0 500.0 750.0 1e+03
             b        (x) float64 40B [g] -1e+03 -750.0 -500.0 -250.0 0.0
-        >>> ds.pint.to(a=ureg.mm, b="g")
+        >>> ds.astropy.to(a=u.mm, b="g")
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
         Data variables:
             a        (x) float64 40B [mm] 0.0 250.0 500.0 750.0 1e+03
@@ -1277,7 +1226,7 @@ class PintDatasetAccessor:
 
         Convert coordinates
 
-        >>> ds.pint.to({"u": ureg.ms})
+        >>> ds.astropy.to({"u": u.ms})
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
@@ -1286,7 +1235,7 @@ class PintDatasetAccessor:
         Data variables:
             a        (x) float64 40B [m] 0.0 0.25 0.5 0.75 1.0
             b        (x) float64 40B [kg] -1.0 -0.75 -0.5 -0.25 0.0
-        >>> ds.pint.to(u="ms")
+        >>> ds.astropy.to(u="ms")
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
@@ -1298,7 +1247,7 @@ class PintDatasetAccessor:
 
         Convert both simultaneously
 
-        >>> ds.pint.to(a=ureg.mm, b=ureg.g, u="ms")
+        >>> ds.astropy.to(a=u.mm, b=u.g, u="ms")
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
@@ -1307,7 +1256,7 @@ class PintDatasetAccessor:
         Data variables:
             a        (x) float64 40B [mm] 0.0 250.0 500.0 750.0 1e+03
             b        (x) float64 40B [g] -1e+03 -750.0 -500.0 -250.0 0.0
-        >>> ds.pint.to({"a": "mm", "b": "g", "u": ureg.ms})
+        >>> ds.astropy.to({"a": "mm", "b": "g", "u": u.ms})
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
@@ -1321,38 +1270,38 @@ class PintDatasetAccessor:
 
         >>> ds = xr.Dataset(
         ...     data_vars={
-        ...         "a": ("x", np.linspace(0, 1, 5) * ureg.kg),
-        ...         "b": ("x", np.linspace(-1, 0, 5) * ureg.mg),
+        ...         "a": ("x", np.linspace(0, 1, 5) * u.kg),
+        ...         "b": ("x", np.linspace(-1, 0, 5) * u.mg),
         ...     },
-        ...     coords={"u": ("x", np.arange(5) * ureg.s)},
+        ...     coords={"u": ("x", np.arange(5) * u.s)},
         ... )
         >>> ds
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
         Data variables:
             a        (x) float64 40B [kg] 0.0 0.25 0.5 0.75 1.0
             b        (x) float64 40B [mg] -1.0 -0.75 -0.5 -0.25 0.0
-        >>> ds.pint.to("g")
+        >>> ds.astropy.to("g")
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
         Data variables:
             a        (x) float64 40B [g] 0.0 250.0 500.0 750.0 1e+03
             b        (x) float64 40B [g] -0.001 -0.00075 -0.0005 -0.00025 0.0
         """
-        if isinstance(units, (str, pint.Unit)):
+        if isinstance(units, (str, astropy.units.UnitBase)):
             unit_kwargs.update(
                 {name: units for name in self.ds.keys() if name not in unit_kwargs}
             )
             units = None
         elif units is not None and not is_dict_like(units):
             raise ValueError(
-                "units must be either a string, a pint.Unit object or a dict-like,"
+                "units must be either a string, a astropy.units.Unit object or a dict-like,"
                 f" but got {units!r}"
             )
 
@@ -1373,7 +1322,7 @@ class PintDatasetAccessor:
         See Also
         --------
         xarray.Dataset.chunk
-        xarray.DataArray.pint.chunk
+        xarray.DataArray.astropy.chunk
         """
         units = conversion.extract_units(self.ds)
         stripped = conversion.strip_units(self.ds)
@@ -1403,8 +1352,8 @@ class PintDatasetAccessor:
 
         See Also
         --------
-        xarray.DataArray.pint.reindex
-        xarray.Dataset.pint.reindex_like
+        xarray.DataArray.astropy.reindex
+        xarray.Dataset.astropy.reindex_like
         xarray.Dataset.reindex
         """
         indexers = either_dict_or_kwargs(indexers, indexers_kwargs, "reindex")
@@ -1448,8 +1397,8 @@ class PintDatasetAccessor:
 
         See Also
         --------
-        xarray.DataArray.pint.reindex_like
-        xarray.Dataset.pint.reindex
+        xarray.DataArray.astropy.reindex_like
+        xarray.Dataset.astropy.reindex
         xarray.Dataset.reindex_like
         """
         indexer_units = conversion.extract_units(other)
@@ -1490,8 +1439,8 @@ class PintDatasetAccessor:
 
         See Also
         --------
-        xarray.DataArray.pint.interp
-        xarray.Dataset.pint.interp_like
+        xarray.DataArray.astropy.interp
+        xarray.Dataset.astropy.interp_like
         xarray.Dataset.interp
         """
         indexers = either_dict_or_kwargs(coords, coords_kwargs, "interp")
@@ -1529,8 +1478,8 @@ class PintDatasetAccessor:
 
         See Also
         --------
-        xarray.DataArray.pint.interp_like
-        xarray.Dataset.pint.interp
+        xarray.DataArray.astropy.interp_like
+        xarray.Dataset.astropy.interp
         xarray.Dataset.interp_like
         """
         indexer_units = conversion.extract_units(other)
@@ -1561,7 +1510,7 @@ class PintDatasetAccessor:
 
         See Also
         --------
-        xarray.DataArray.pint.sel
+        xarray.DataArray.astropy.sel
         xarray.Dataset.sel
         xarray.DataArray.sel
         """
@@ -1618,7 +1567,7 @@ class PintDatasetAccessor:
 
         See Also
         --------
-        xarray.DataArray.pint.drop_sel
+        xarray.DataArray.astropy.drop_sel
         xarray.Dataset.drop_sel
         xarray.DataArray.drop_sel
         """
@@ -1653,7 +1602,7 @@ class PintDatasetAccessor:
         See Also
         --------
         xarray.Dataset.ffill
-        xarray.Dataset.pint.bfill
+        xarray.Dataset.astropy.bfill
         """
         units = conversion.extract_units(self.ds)
         stripped = conversion.strip_units(self.ds)
@@ -1670,7 +1619,7 @@ class PintDatasetAccessor:
         See Also
         --------
         xarray.Dataset.bfill
-        xarray.Dataset.pint.ffill
+        xarray.Dataset.astropy.ffill
         """
         units = conversion.extract_units(self.ds)
         stripped = conversion.strip_units(self.ds)
@@ -1700,7 +1649,7 @@ class PintDatasetAccessor:
 
         See Also
         --------
-        xarray.DataArray.pint.interpolate_na
+        xarray.DataArray.astropy.interpolate_na
         xarray.Dataset.interpolate_na
         """
         units = conversion.extract_units(self.ds)

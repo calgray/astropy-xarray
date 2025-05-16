@@ -11,13 +11,13 @@ def add_standard_imports(doctest_namespace, tmpdir):
 
     import astropy_xarray
 
-    ureg = astropy.units
+    u = astropy.units
 
     doctest_namespace["np"] = np
     doctest_namespace["pd"] = pd
     doctest_namespace["xr"] = xr
     doctest_namespace["astropy"] = astropy
-    doctest_namespace["ureg"] = ureg
+    doctest_namespace["u"] = u
     doctest_namespace["astropy_xarray"] = astropy_xarray
 
     # always seed numpy.random to make the examples deterministic

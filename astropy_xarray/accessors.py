@@ -258,7 +258,7 @@ class AstropyDataArrayAccessor:
         ... )
         >>> da.astropy.quantify(units="Hz")
         <xarray.DataArray (wavelength: 6)> Size: 48B
-        <Quantity([0.4 0.9 1.7 4.8 3.2 9.1], 'hertz')>
+        <Quantity [0.4, 0.9, 1.7, 4.8, 3.2, 9.1] Hz>
         Coordinates:
           * wavelength  (wavelength) float64 48B 0.0001 0.0002 0.0004 0.0006 0.001 0.002
 
@@ -279,11 +279,11 @@ class AstropyDataArrayAccessor:
         >>> q = da.astropy.quantify()
         >>> q
         <xarray.DataArray (wavelength: 2)> Size: 16B
-        <Quantity([0.4 0.9], 'hertz')>
+        <Quantity [0.4, 0.9] Hz>
         Dimensions without coordinates: wavelength
         >>> q.astropy.quantify("Hz")
         <xarray.DataArray (wavelength: 2)> Size: 16B
-        <Quantity([0.4 0.9], 'hertz')>
+        <Quantity [0.4, 0.9] Hz>
         Dimensions without coordinates: wavelength
         """
         if units is None or isinstance(units, (str, astropy.units.UnitBase)):
@@ -381,30 +381,28 @@ class AstropyDataArrayAccessor:
         >>> q = da.astropy.quantify("m / s")
         >>> q
         <xarray.DataArray (x: 2)> Size: 16B
-        <Quantity([0 1], 'meter / second')>
+        <Quantity [0., 1.] m / s>
         Dimensions without coordinates: x
 
-        >>> q.astropy.dequantify(format="P")
+        >>> q.astropy.dequantify(format="unicode")
         <xarray.DataArray (x: 2)> Size: 16B
-        array([0, 1])
+        array([0., 1.])
         Dimensions without coordinates: x
         Attributes:
-            units:    meter/second
-        >>> q.astropy.dequantify(format="~P")
+            units:    m s⁻¹
+        >>> q.astropy.dequantify(format="generic")
         <xarray.DataArray (x: 2)> Size: 16B
-        array([0, 1])
+        array([0., 1.])
         Dimensions without coordinates: x
         Attributes:
-            units:    m/s
+            units:    m / s
 
-        Use the registry's default format
-
-        >>> q.astropy.dequantify()
+        >>> q.astropy.dequantify(format="latex")
         <xarray.DataArray (x: 2)> Size: 16B
-        array([0, 1])
+        array([0., 1.])
         Dimensions without coordinates: x
         Attributes:
-            units:    \frac{\mathrm{m}}{\mathrm{s}}
+            units:    $\mathrm{\frac{m}{s}}$
         """
         units = conversion.extract_unit_attributes(self.da)
         units.update(conversion.extract_units(self.da))
@@ -463,50 +461,50 @@ class AstropyDataArrayAccessor:
         Examples
         --------
         >>> da = xr.DataArray(
-        ...     data=np.linspace(0, 1, 5) * ureg.m,
-        ...     coords={"u": ("x", np.arange(5) * ureg.s)},
+        ...     data=np.linspace(0, 1, 5) * u.m,
+        ...     coords={"u": ("x", np.arange(5) * u.s)},
         ...     dims="x",
         ...     name="arr",
         ... )
         >>> da
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([0.   0.25 0.5  0.75 1.  ], 'meter')>
+        <Quantity [0.  , 0.25, 0.5 , 0.75, 1.  ] m>
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
 
         Convert the data
 
         >>> da.astropy.to("mm")
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
-        >>> da.astropy.to(ureg.mm)
+        >>> da.astropy.to(u.mm)
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
         >>> da.astropy.to({da.name: "mm"})
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
 
         Convert coordinates
 
-        >>> da.astropy.to({"u": ureg.ms})
+        >>> da.astropy.to({"u": u.ms})
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([0.   0.25 0.5  0.75 1.  ], 'meter')>
+        <Quantity [0.  , 0.25, 0.5 , 0.75, 1.  ] m>
         Coordinates:
             u        (x) float64 40B [ms] 0.0 1e+03 2e+03 3e+03 4e+03
         Dimensions without coordinates: x
         >>> da.astropy.to(u="ms")
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([0.   0.25 0.5  0.75 1.  ], 'meter')>
+        <Quantity [0.  , 0.25, 0.5 , 0.75, 1.  ] m>
         Coordinates:
             u        (x) float64 40B [ms] 0.0 1e+03 2e+03 3e+03 4e+03
         Dimensions without coordinates: x
@@ -515,19 +513,19 @@ class AstropyDataArrayAccessor:
 
         >>> da.astropy.to("mm", u="ms")
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
             u        (x) float64 40B [ms] 0.0 1e+03 2e+03 3e+03 4e+03
         Dimensions without coordinates: x
-        >>> da.astropy.to({"arr": ureg.mm, "u": ureg.ms})
+        >>> da.astropy.to({"arr": u.mm, "u": u.ms})
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
             u        (x) float64 40B [ms] 0.0 1e+03 2e+03 3e+03 4e+03
         Dimensions without coordinates: x
         >>> da.astropy.to(arr="mm", u="ms")
         <xarray.DataArray 'arr' (x: 5)> Size: 40B
-        <Quantity([   0.  250.  500.  750. 1000.], 'millimeter')>
+        <Quantity [   0.,  250.,  500.,  750., 1000.] mm>
         Coordinates:
             u        (x) float64 40B [ms] 0.0 1e+03 2e+03 3e+03 4e+03
         Dimensions without coordinates: x
@@ -974,19 +972,19 @@ class AstropyDatasetAccessor:
         Dimensions:  (x: 3)
         Coordinates:
           * x        (x) int64 24B 0 1 2
-            u        (x) int64 24B [s] -1 0 1
+            u        (x) float64 24B [s] -1.0 0.0 1.0
         Data variables:
-            a        (x) int64 24B [m] 0 3 2
+            a        (x) float64 24B [m] 0.0 3.0 2.0
             b        (x) int64 24B 5 -2 1
         >>> ds.astropy.quantify({"b": "dm"})
         <xarray.Dataset> Size: 96B
         Dimensions:  (x: 3)
         Coordinates:
           * x        (x) int64 24B 0 1 2
-            u        (x) int64 24B [s] -1 0 1
+            u        (x) float64 24B [s] -1.0 0.0 1.0
         Data variables:
-            a        (x) int64 24B [m] 0 3 2
-            b        (x) int64 24B [dm] 5 -2 1
+            a        (x) float64 24B [m] 0.0 3.0 2.0
+            b        (x) float64 24B [dm] 5.0 -2.0 1.0
 
         Don't quantify specific variables:
 
@@ -995,7 +993,7 @@ class AstropyDatasetAccessor:
         Dimensions:  (x: 3)
         Coordinates:
           * x        (x) int64 24B 0 1 2
-            u        (x) int64 24B [s] -1 0 1
+            u        (x) float64 24B [s] -1.0 0.0 1.0
         Data variables:
             a        (x) int64 24B 0 3 2
             b        (x) int64 24B 5 -2 1
@@ -1008,18 +1006,18 @@ class AstropyDatasetAccessor:
         Dimensions:  (x: 3)
         Coordinates:
           * x        (x) int64 24B 0 1 2
-            u        (x) int64 24B [s] -1 0 1
+            u        (x) float64 24B [s] -1.0 0.0 1.0
         Data variables:
-            a        (x) int64 24B [m] 0 3 2
+            a        (x) float64 24B [m] 0.0 3.0 2.0
             b        (x) int64 24B 5 -2 1
         >>> q.astropy.quantify({"a": "m"})
         <xarray.Dataset> Size: 96B
         Dimensions:  (x: 3)
         Coordinates:
           * x        (x) int64 24B 0 1 2
-            u        (x) int64 24B [s] -1 0 1
+            u        (x) float64 24B [s] -1.0 0.0 1.0
         Data variables:
-            a        (x) int64 24B [m] 0 3 2
+            a        (x) float64 24B [m] 0.0 3.0 2.0
             b        (x) int64 24B 5 -2 1
         """
         units = either_dict_or_kwargs(units, unit_kwargs, "quantify")
@@ -1110,53 +1108,50 @@ class AstropyDatasetAccessor:
         Dimensions:  (x: 2, y: 3)
         Dimensions without coordinates: x, y
         Data variables:
-            a        (x) int64 16B [m/s] 0 1
-            b        (y) int64 24B [s] 2 3 4
+            a        (x) float64 16B [m s⁻¹] 0.0 1.0
+            b        (y) float64 24B [s] 2.0 3.0 4.0
 
-        >>> d = q.astropy.dequantify(format="P")
+        >>> d = q.astropy.dequantify(format="unicode")
         >>> d.a
         <xarray.DataArray 'a' (x: 2)> Size: 16B
-        array([0, 1])
+        array([0., 1.])
         Dimensions without coordinates: x
         Attributes:
-            units:    meter/second
+            units:    m s⁻¹
         >>> d.b
         <xarray.DataArray 'b' (y: 3)> Size: 24B
-        array([2, 3, 4])
-        Dimensions without coordinates: y
-        Attributes:
-            units:    second
-
-        >>> d = q.astropy.dequantify(format="~P")
-        >>> d.a
-        <xarray.DataArray 'a' (x: 2)> Size: 16B
-        array([0, 1])
-        Dimensions without coordinates: x
-        Attributes:
-            units:    m/s
-        >>> d.b
-        <xarray.DataArray 'b' (y: 3)> Size: 24B
-        array([2, 3, 4])
+        array([2., 3., 4.])
         Dimensions without coordinates: y
         Attributes:
             units:    s
 
-        Use the registry's default format
-
-        >>> pint_xarray.unit_registry.default_format = "~L"
-        >>> d = q.astropy.dequantify()
+        >>> d = q.astropy.dequantify(format="generic")
         >>> d.a
         <xarray.DataArray 'a' (x: 2)> Size: 16B
-        array([0, 1])
+        array([0., 1.])
         Dimensions without coordinates: x
         Attributes:
-            units:    \frac{\mathrm{m}}{\mathrm{s}}
+            units:    m / s
         >>> d.b
         <xarray.DataArray 'b' (y: 3)> Size: 24B
-        array([2, 3, 4])
+        array([2., 3., 4.])
         Dimensions without coordinates: y
         Attributes:
-            units:    \mathrm{s}
+            units:    s
+
+        >>> d = q.astropy.dequantify(format="latex")
+        >>> d.a
+        <xarray.DataArray 'a' (x: 2)> Size: 16B
+        array([0., 1.])
+        Dimensions without coordinates: x
+        Attributes:
+            units:    $\mathrm{\frac{m}{s}}$
+        >>> d.b
+        <xarray.DataArray 'b' (y: 3)> Size: 24B
+        array([2., 3., 4.])
+        Dimensions without coordinates: y
+        Attributes:
+            units:    $\mathrm{s}$
         """
         units = conversion.extract_unit_attributes(self.ds)
         units.update(conversion.extract_units(self.ds))
@@ -1193,16 +1188,16 @@ class AstropyDatasetAccessor:
         --------
         >>> ds = xr.Dataset(
         ...     data_vars={
-        ...         "a": ("x", np.linspace(0, 1, 5) * ureg.m),
-        ...         "b": ("x", np.linspace(-1, 0, 5) * ureg.kg),
+        ...         "a": ("x", np.linspace(0, 1, 5) * u.m),
+        ...         "b": ("x", np.linspace(-1, 0, 5) * u.kg),
         ...     },
-        ...     coords={"u": ("x", np.arange(5) * ureg.s)},
+        ...     coords={"u": ("x", np.arange(5) * u.s)},
         ... )
         >>> ds
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
         Data variables:
             a        (x) float64 40B [m] 0.0 0.25 0.5 0.75 1.0
@@ -1210,20 +1205,20 @@ class AstropyDatasetAccessor:
 
         Convert the data
 
-        >>> ds.astropy.to({"a": "mm", "b": ureg.g})
+        >>> ds.astropy.to({"a": "mm", "b": u.g})
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
         Data variables:
             a        (x) float64 40B [mm] 0.0 250.0 500.0 750.0 1e+03
             b        (x) float64 40B [g] -1e+03 -750.0 -500.0 -250.0 0.0
-        >>> ds.astropy.to(a=ureg.mm, b="g")
+        >>> ds.astropy.to(a=u.mm, b="g")
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
         Data variables:
             a        (x) float64 40B [mm] 0.0 250.0 500.0 750.0 1e+03
@@ -1231,7 +1226,7 @@ class AstropyDatasetAccessor:
 
         Convert coordinates
 
-        >>> ds.astropy.to({"u": ureg.ms})
+        >>> ds.astropy.to({"u": u.ms})
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
@@ -1252,7 +1247,7 @@ class AstropyDatasetAccessor:
 
         Convert both simultaneously
 
-        >>> ds.astropy.to(a=ureg.mm, b=ureg.g, u="ms")
+        >>> ds.astropy.to(a=u.mm, b=u.g, u="ms")
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
@@ -1261,7 +1256,7 @@ class AstropyDatasetAccessor:
         Data variables:
             a        (x) float64 40B [mm] 0.0 250.0 500.0 750.0 1e+03
             b        (x) float64 40B [g] -1e+03 -750.0 -500.0 -250.0 0.0
-        >>> ds.astropy.to({"a": "mm", "b": "g", "u": ureg.ms})
+        >>> ds.astropy.to({"a": "mm", "b": "g", "u": u.ms})
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
@@ -1275,16 +1270,16 @@ class AstropyDatasetAccessor:
 
         >>> ds = xr.Dataset(
         ...     data_vars={
-        ...         "a": ("x", np.linspace(0, 1, 5) * ureg.kg),
-        ...         "b": ("x", np.linspace(-1, 0, 5) * ureg.mg),
+        ...         "a": ("x", np.linspace(0, 1, 5) * u.kg),
+        ...         "b": ("x", np.linspace(-1, 0, 5) * u.mg),
         ...     },
-        ...     coords={"u": ("x", np.arange(5) * ureg.s)},
+        ...     coords={"u": ("x", np.arange(5) * u.s)},
         ... )
         >>> ds
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
         Data variables:
             a        (x) float64 40B [kg] 0.0 0.25 0.5 0.75 1.0
@@ -1293,7 +1288,7 @@ class AstropyDatasetAccessor:
         <xarray.Dataset> Size: 120B
         Dimensions:  (x: 5)
         Coordinates:
-            u        (x) int64 40B [s] 0 1 2 3 4
+            u        (x) float64 40B [s] 0.0 1.0 2.0 3.0 4.0
         Dimensions without coordinates: x
         Data variables:
             a        (x) float64 40B [g] 0.0 250.0 500.0 750.0 1e+03

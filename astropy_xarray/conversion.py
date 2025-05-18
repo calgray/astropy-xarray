@@ -20,9 +20,9 @@ import astropy
 import astropy.units
 from xarray import Coordinates, DataArray, Dataset, IndexVariable, Variable
 
-from .compat import call_on_dataset
-from .errors import format_error_message
-from .index import AstropyIndex
+from astropy_xarray.compat import call_on_dataset
+from astropy_xarray.errors import format_error_message
+from astropy_xarray.index import AstropyIndex
 
 no_unit_values = ("none", None)
 unit_attribute_name = "units"

@@ -8,13 +8,13 @@ from astropy.units import Quantity
 from xarray import DataArray, Variable
 from xarray.testing import assert_equal, assert_identical  # noqa: F401
 
-from ..conversion import (
+from astropy_xarray.conversion import (
     array_strip_unit,
     extract_indexer_units,
     strip_units,
     strip_units_variable,
 )
-from ..testing import assert_units_equal  # noqa: F401
+from astropy_xarray.testing import assert_units_equal  # noqa: F401
 
 
 def importorskip(name):

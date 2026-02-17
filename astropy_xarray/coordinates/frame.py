@@ -108,8 +108,8 @@ def dump_frame(frame: BaseCoordinateFrame, with_data: bool = False) -> dict:
 
 
 def load_frame(frame_dict: dict, with_data: bool = False) -> BaseCoordinateFrame:
-    representation_type = frame_dict.get("data").get("representation_type")
-    differential_type = frame_dict.get("data").get("differential_type")
+    representation_type = frame_dict.get("data", {}).get("representation_type")
+    differential_type = frame_dict.get("data", {}).get("differential_type")
     kwargs = dict(
         representation_type=representation_type, differential_type=differential_type
     )
@@ -286,7 +286,7 @@ def load_representation(
             dict(
                 zip(
                     tuple(DifferentialClass.attr_classes),
-                    frame_type._get_representation_info()[DifferentialClass]["names"],
+                    frame_type.get_representation_component_names("diff"),
                 )
             )
             if DifferentialClass is not None
@@ -296,7 +296,7 @@ def load_representation(
             dict(
                 zip(
                     tuple(RepresentationClass.attr_classes),
-                    frame_type._get_representation_info()[RepresentationClass]["names"],
+                    frame_type.get_representation_component_names("diff"),
                 )
             )
             if RepresentationClass is not None

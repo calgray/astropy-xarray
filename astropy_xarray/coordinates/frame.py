@@ -296,11 +296,20 @@ def load_representation(
     else:
         # using frame component names
         frame_type: BaseCoordinateFrame = frame_transform_graph.lookup_name(frame_name)
+
+        if False:  # astropy 7.1+
+            representation_info = frame_type._frame_class_cache["representation_info"]
+        elif False:  # astropy 6.0-7.0
+            representation_info = frame_type._get_representation_info()
+        else:
+            # unknown instantiation avoidance (this should really be a class method)
+            representation_info = frame_type().representation_info
+
         diff_to_data = (
             dict(
                 zip(
                     tuple(DifferentialClass.attr_classes),
-                    frame_type._get_representation_info()[DifferentialClass]["names"],
+                    representation_info[DifferentialClass]["names"],
                 )
             )
             if DifferentialClass is not None
@@ -310,7 +319,7 @@ def load_representation(
             dict(
                 zip(
                     tuple(RepresentationClass.attr_classes),
-                    frame_type._get_representation_info()[RepresentationClass]["names"],
+                    representation_info[RepresentationClass]["names"],
                 )
             )
             if RepresentationClass is not None

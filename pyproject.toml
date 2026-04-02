@@ -50,9 +50,9 @@ test = [
 ]
 docs = [
   "sphinx==8.2.3",
-  "sphinx_auto_summary_accessors",
   "nbsphinx",
   "sphinx_rtd_theme",
+  "sphinx-autosummary-accessors",
 ]
 
 [tool.setuptools.packages.find]

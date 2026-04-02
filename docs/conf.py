@@ -46,7 +46,12 @@ extensions = [
     "sphinx_autosummary_accessors",
     "IPython.sphinxext.ipython_directive",
     "IPython.sphinxext.ipython_console_highlighting",
-    "nbsphinx",
+    "myst_nb",
+]
+
+myst_enable_extensions = [
+    "dollarmath",
+    "colon_fence",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

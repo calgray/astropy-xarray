@@ -1,5 +1,6 @@
 astropy==7.2.0
 xarray>=2022.06.0
+myst-nb==1.4.0
 pooch
 netCDF4
 msgpack-numpy>=0.4.8

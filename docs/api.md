@@ -1,23 +1,18 @@
-API reference
-=============
-This page contains a auto-generated summary of ``astropy-xarray``'s API.
+# Python API
 
-.. autosummary::
-   :toctree: generated/
+This page contains a auto-generated summary of `astropy-xarray`'s API.
 
-   astropy_xarray.coordinates.dataset_to_skycoord
-   astropy_xarray.coordinates.skycoord_to_dataset
-   astropy_xarray.coordinates.load_frame
-   astropy_xarray.coordinates.load_representation
+## Dataset
 
-Dataset
--------
+```{eval-rst}
 .. autosummary::
    :toctree: generated/
    :template: autosummary/accessor_attribute.rst
 
    xarray.Dataset.astropy.loc
+```
 
+```{eval-rst}
 .. autosummary::
    :toctree: generated/
    :template: autosummary/accessor_method.rst
@@ -36,9 +31,11 @@ Dataset
    xarray.Dataset.astropy.bfill
    xarray.Dataset.astropy.interpolate_na
    xarray.Dataset.astropy.to_skycoord
+```
 
-DataArray
----------
+## DataArray
+
+```{eval-rst}
 .. autosummary::
    :toctree: generated/
    :template: autosummary/accessor_attribute.rst
@@ -49,7 +46,9 @@ DataArray
    .. xarray.DataArray.astropy.units
    .. xarray.DataArray.astropy.dimensionality
    .. xarray.DataArray.astropy.registry
+```
 
+```{eval-rst}
 .. autosummary::
    :toctree: generated/
    :template: autosummary/accessor_method.rst
@@ -67,11 +66,22 @@ DataArray
    xarray.DataArray.astropy.ffill
    xarray.DataArray.astropy.bfill
    xarray.DataArray.astropy.interpolate_na
+```
 
-Testing
--------
+## Coordinates
 
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+
+   astropy_xarray.coordinates
+```
+
+## Testing
+
+```{eval-rst}
 .. autosummary::
    :toctree: generated/
 
    astropy_xarray.testing.assert_units_equal
+```

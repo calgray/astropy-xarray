@@ -27,14 +27,16 @@ requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.23,<2.3.0",
   "xarray>=2022.06.0,<=2025.4.0",
-  "astropy>=6.1.0,<7.2.0",
+  "astropy>=6.1.0",
   "pandas>=2.3.0,<3.0.0",
 ]
 dynamic = ["version"]
 
 [project.urls]
-Home = "https://github.com/calgray/astropy-xarray"
-Documentation = "https://astropy-xarray.readthedocs.io/en/stable"
+homepage = "https://github.com/calgray/astropy-xarray"
+documentation = "https://astropy-xarray.readthedocs.io/en/stable"
+repository = "https://github.com/calgray/astropy-xarray"
+issues = "https://github.com/calgray/astropy-xarray/issues"
 
 [project.optional-dependencies]
 test = [

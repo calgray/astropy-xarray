@@ -44,14 +44,15 @@ test = [
   "pytest-cov",
   "dask[array]",
   "msgpack>=1.1.2",
-  "msgpack_numpy>=0.4.8",
-  "cf_xarray>=0.10.6",
+  "msgpack-numpy>=0.4.8",
+  "cf-xarray>=0.10.6",
   "bottleneck",
 ]
 docs = [
   "sphinx==8.2.3",
+  "myst-nb==1.4.0",
   "nbsphinx",
-  "sphinx_rtd_theme",
+  "sphinx-rtd-theme",
   "sphinx-autosummary-accessors",
 ]
 

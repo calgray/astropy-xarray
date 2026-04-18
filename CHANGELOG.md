@@ -5,11 +5,11 @@
 
 # What's New
 
-## 0.2.1 (8 Apr 2026)
+## 0.2.1 (18 Apr 2026)
 
-- Added support for `astropy==7.2.0`.
+- Added support for `astropy==7.2.0` sky coordinates.
 
-  By [Callan Gray](https://github.com/calgray).
+By [Callan Gray](https://github.com/calgray).
 
 ## 0.2.0 (31 Mar 2026)
 
@@ -26,7 +26,7 @@
 
 - Added {py:meth}`Dataset.astropy.to_skycoord` accessor.
 
-  By [Callan Gray](https://github.com/calgray).
+By [Callan Gray](https://github.com/calgray).
 
 ## 0.1.0 (17 Jul 2025)
 
@@ -43,4 +43,4 @@
   - `Unit()` is not an instance of {py:class}`astropy.units.Unit`, only {py:class}`astropy.units.UnitBase`.
   - Different format literals, see [built-in formats](https://docs.astropy.org/en/stable/units/format.html#built-in-formats).
 
-  By [Callan Gray](https://github.com/calgray).
+By [Callan Gray](https://github.com/calgray).

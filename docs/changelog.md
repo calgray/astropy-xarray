@@ -1,1 +1,3 @@
-/home/callan/Code/astropy-xarray/CHANGELOG.md
+```{include} ../CHANGELOG.md
+
+```

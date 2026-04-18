@@ -9,57 +9,46 @@ Seamless interoperability between [astropy] and [xarray].
 
 ---
 
+# Documentation
+
 :::{warning}
 This package is experimental, and new versions might introduce backwards incompatible
 changes.
 :::
 
-## Documentation
-
-### Getting Started
-
-- {doc}`installation`
-- {doc}`examples`
-
 ```{toctree}
 :caption: Getting Started
-:hidden: true
-:maxdepth: 1
+:maxdepth: 2
 
 installation
-examples
+overview
 ```
-
-### User Guide
-
-- {doc}`terminology`
-- {doc}`creation`
-- {doc}`conversion`
 
 ```{toctree}
 :caption: User Guide
-:hidden: true
-:maxdepth: 1
+:maxdepth: 2
 
-terminology
 creation
 conversion
+examples
+terminology
 ```
 
-### Help & Reference:
+```{toctree}
+:caption: API Reference
+:maxdepth: 2
 
-- {doc}`whats-new`
-- {doc}`api`
-- {doc}`contributing`
+api
+```
 
 ```{toctree}
-:caption: Help & Reference
-:hidden: true
-:maxdepth: 1
+:caption: Community
+:maxdepth: 2
 
-whats-new
-api
+changelog
 contributing
+code_of_conduct
+license
 ```
 
 [astropy]: https://docs.astropy.org/en/latest/

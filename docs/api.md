@@ -1,16 +1,6 @@
-# API reference
+# Python API
 
 This page contains a auto-generated summary of `astropy-xarray`'s API.
-
-```{eval-rst}
-.. autosummary::
-   :toctree: generated/
-
-   astropy_xarray.coordinates.dataset_to_skycoord
-   astropy_xarray.coordinates.skycoord_to_dataset
-   astropy_xarray.coordinates.load_frame
-   astropy_xarray.coordinates.load_representation
-```
 
 ## Dataset
 
@@ -76,6 +66,15 @@ This page contains a auto-generated summary of `astropy-xarray`'s API.
    xarray.DataArray.astropy.ffill
    xarray.DataArray.astropy.bfill
    xarray.DataArray.astropy.interpolate_na
+```
+
+## Coordinates
+
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+
+   astropy_xarray.coordinates
 ```
 
 ## Testing

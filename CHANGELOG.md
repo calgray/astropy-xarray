@@ -1,19 +1,26 @@
 ```{eval-rst}
+.. currentmodule:: astropy_xarray
 .. currentmodule:: xarray
 ```
 
-# What's new
+# What's New
+
+## 0.2.1 (8 Apr 2026)
+
+- Added support for `astropy==7.2.0`.
+
+  By [Callan Gray](https://github.com/calgray).
 
 ## 0.2.0 (31 Mar 2026)
 
-- Added `coordinates` submodule with `dataset_to_skycoord` and `skycoord_to_dataset` explicit conversion functions for working with {py:class}`astropy.coordinates.SkyCoord`.
+- Added {py:mod}`coordinates` submodule with {py:func}`coordinates.dataset_to_skycoord` and {py:func}`coordinates.skycoord_to_dataset` explicit conversion functions for working with {py:class}`astropy.coordinates.SkyCoord`.
 
 - Added support for specialized quantities:
   - {py:class}`astropy.time.Time`
   - {py:class}`astropy.time.TimeDelta`
   - {py:class}`astropy.coordinates.Angle`
   - {py:class}`astropy.coordinates.Longitude`
-  - {py:class}`astropy.coordinates.Latitude`
+  - {py:class}`astropy.coordinates.Latitude`\*\*\*\*
   - {py:class}`astropy.coordinates.Distance`
   - {py:class}`astropy.units.LogQuantity`
 

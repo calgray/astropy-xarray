@@ -2,7 +2,7 @@
 .. currentmodule:: xarray
 ```
 
-# Creating and saving objects with units
+# Creating datasets with units
 
 ## Attaching units
 

@@ -11,7 +11,7 @@ from numpy.testing import assert_array_equal
 
 from astropy_xarray import accessors, conversion
 from astropy_xarray.index import AstropyIndex
-from astropy_xarray.tests.utils import (
+from tests.utils import (
     assert_equal,
     assert_identical,
     assert_units_equal,

@@ -20,7 +20,7 @@ By [Callan Gray](https://github.com/calgray).
   - {py:class}`astropy.time.TimeDelta`
   - {py:class}`astropy.coordinates.Angle`
   - {py:class}`astropy.coordinates.Longitude`
-  - {py:class}`astropy.coordinates.Latitude`\*\*\*\*
+  - {py:class}`astropy.coordinates.Latitude`
   - {py:class}`astropy.coordinates.Distance`
   - {py:class}`astropy.units.LogQuantity`
 

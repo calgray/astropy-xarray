@@ -1,20 +1,25 @@
 # astropy-xarray
 
-Seamless interoperability between [astropy] and [xarray].
-
-```{image} img/astropy_xarray_logo.svg
+```{image} img/astropy_xarray_logo.png
 :align: center
 :width: 50%
+:class: only-light
 ```
 
----
+```{image} img/astropy_xarray_logo_invert.png
+:align: center
+:width: 50%
+:class: only-dark
+```
+
+Seamless interoperability between [astropy] and [xarray].
 
 # Documentation
 
-:::{warning}
+```{warning}
 This package is experimental, and new versions might introduce backwards incompatible
 changes.
-:::
+```
 
 ```{toctree}
 :caption: Getting Started
@@ -38,7 +43,7 @@ terminology
 :caption: API Reference
 :maxdepth: 2
 
-api
+python_api
 ```
 
 ```{toctree}

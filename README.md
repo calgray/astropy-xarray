@@ -3,12 +3,16 @@
 [![CI](https://github.com/calgray/astropy-xarray/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/calgray/astropy-xarray/actions/workflows/ci.yml)
 [![code coverage](https://codecov.io/gh/calgray/astropy-xarray/branch/main/graph/badge.svg)](https://codecov.io/gh/calgray/astropy-xarray)
 [![docs](https://readthedocs.org/projects/astropy-xarray/badge/?version=latest)](https://astropy-xarray.readthedocs.io)
+[![PyPI python versions](https://img.shields.io/pypi/pyversions/astropy-xarray.svg?style=flat&logo=python&logoColor=white)](https://pypi.python.org/pypi/astropy-xarray)
 [![PyPI version](https://img.shields.io/pypi/v/astropy-xarray.svg)](https://pypi.org/project/astropy-xarray)
-[![codestyle](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 [![conda-forge](https://img.shields.io/conda/vn/conda-forge/astropy-xarray)](https://github.com/conda-forge/astropy-xarray-feedstock)
 
+[![code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
+[![license](https://img.shields.io/badge/license-Apache%20License%202.0-blue)](https://opensource.org/license/Apache-2.0)
+[![code of conduct](https://img.shields.io/badge/code%20of%20conduct-contributor%20covenant%203.0-4baaaa.svg)](CODE_OF_CONDUCT.md)
+
 <p align="center">
- <img width="50%" src="docs/img/astropy_xarray_logo.svg">
+ <img alt="" width="50%" src="docs/img/astropy_xarray_logo.png">
 </p>
 
 Seamless interoperability between [astropy](https://www.astropy.org) and

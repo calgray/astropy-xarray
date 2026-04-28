@@ -6,7 +6,7 @@ netCDF4
 msgpack-numpy>=0.4.8
 cf-xarray>=0.6
 sphinx>=8.0.0,<9.0.0
-sphinx_rtd_theme>=1.0
+furo
 ipython
 ipykernel
 jupyter_client

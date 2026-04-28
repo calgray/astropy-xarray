@@ -1,12 +1,14 @@
 # Installation
 
+<!--
 Install from `conda-forge`:
 
 ```sh
 conda install -c conda-forge astropy-xarray
 ```
+-->
 
-or from `PyPI`:
+Install from `PyPI`:
 
 ```sh
 python -m pip install astropy-xarray

@@ -7,7 +7,7 @@ from xarray.core.indexes import PandasIndex
 
 from astropy_xarray import conversion
 from astropy_xarray.index import AstropyIndex
-from astropy_xarray.tests.utils import (
+from tests.utils import (
     assert_array_equal,
     assert_array_units_equal,
     assert_identical,

@@ -5,6 +5,11 @@
 
 # What's New
 
+## **Unreleased**
+
+- Added supported for {py:attr}`astropy.coordinates.SkyCoord.obstime`.
+- Added supported for {py:attr}`astropy.coordinates.SkyCoord.equinox`.
+
 ## 0.2.1 (18 Apr 2026)
 
 - Added support for `astropy==7.2.0` sky coordinates.

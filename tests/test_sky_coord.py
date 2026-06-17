@@ -349,29 +349,98 @@ def test_skycoord_roundtrip(
     np.testing.assert_array_equal(actual, expected)
 
 
-def test_skycoord_obstime():
+def test_skycoord_obstime_empty():
     empty = SkyCoord(ra=[[0.1], [0.2]] * u.deg, dec=[[0.5], [0.7]] * u.deg)
     assert empty.obstime is None
     assert "obstime" not in skycoord_to_dataset(empty).attrs
+    ds = skycoord_to_dataset(empty)
+    assert "obstime" not in ds.attrs
+    assert dataset_to_skycoord(ds).obstime is None
 
+
+def test_skycoord_obstime_optional():
     value = SkyCoord(
         ra=[[0.1], [0.2]] * u.deg, dec=[[0.5], [0.7]] * u.deg, obstime="J2000"
     )
     assert value.obstime == Time("J2000")
-    assert skycoord_to_dataset(value).attrs["obstime"] == dump_time(Time("J2000"))
+    ds = skycoord_to_dataset(value)
+    assert ds.attrs["obstime"] == dump_time(Time("J2000"))
+    assert dataset_to_skycoord(ds).obstime == Time("J2000")
 
+
+def test_skycoord_obstime_frame_default():
     value = SkyCoord(
         ra=[[0.1], [0.2]] * u.deg,
         dec=[[0.5], [0.7]] * u.deg,
         frame=FK4(),
     )
     assert value.obstime == Time("B1950")
-    assert "obstime" not in skycoord_to_dataset(empty).attrs
+    ds = skycoord_to_dataset(value)
+    assert "obstime" not in ds.attrs
+    assert dataset_to_skycoord(ds).obstime == Time("B1950")
 
+
+def test_skycoord_obstime_frame_override():
+    _ = SkyCoord(
+        ra=[[0.1], [0.2]] * u.deg,
+        dec=[[0.5], [0.7]] * u.deg,
+        frame=FK5(),
+        obstime="J2000",
+    )
     with pytest.raises(ValueError):
-        value = SkyCoord(
+        _ = SkyCoord(
             ra=[[0.1], [0.2]] * u.deg,
             dec=[[0.5], [0.7]] * u.deg,
             frame=FK4(),
             obstime="J2000",
+        )
+
+
+def test_skycoord_equinox_empty():
+    empty = SkyCoord(ra=[[0.1], [0.2]] * u.deg, dec=[[0.5], [0.7]] * u.deg)
+    assert empty.equinox is None
+    assert "equinox" not in skycoord_to_dataset(empty).attrs
+    ds = skycoord_to_dataset(empty)
+    assert "equinox" not in ds.attrs
+    assert dataset_to_skycoord(ds).equinox is None
+
+
+def test_skycoord_equinox_optional():
+    value = SkyCoord(
+        ra=[[0.1], [0.2]] * u.deg, dec=[[0.5], [0.7]] * u.deg, equinox="J2000"
+    )
+    assert value.equinox == Time("J2000")
+    assert skycoord_to_dataset(value).attrs["equinox"] == dump_time(Time("J2000"))
+    ds = skycoord_to_dataset(value)
+    assert ds.attrs["equinox"] == dump_time(Time("J2000"))
+    assert dataset_to_skycoord(ds).equinox == Time("J2000")
+
+
+def test_skycoord_equinox_frame_default():
+    value = SkyCoord(
+        ra=[[0.1], [0.2]] * u.deg,
+        dec=[[0.5], [0.7]] * u.deg,
+        frame=FK4(),
+    )
+    assert value.equinox == Time("B1950")
+    assert "equinox" not in skycoord_to_dataset(value).attrs
+    ds = skycoord_to_dataset(value)
+    assert "equinox" not in ds.attrs
+    assert dataset_to_skycoord(ds).equinox == Time("B1950")
+
+
+def test_skycoord_equinox_frame_override():
+    with pytest.raises(ValueError):
+        _ = SkyCoord(
+            ra=[[0.1], [0.2]] * u.deg,
+            dec=[[0.5], [0.7]] * u.deg,
+            frame=FK5(),
+            equinox="J2000",
+        )
+    with pytest.raises(ValueError):
+        _ = SkyCoord(
+            ra=[[0.1], [0.2]] * u.deg,
+            dec=[[0.5], [0.7]] * u.deg,
+            frame=FK4(),
+            equinox="J2000",
         )

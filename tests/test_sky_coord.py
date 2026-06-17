@@ -49,6 +49,7 @@ from astropy_xarray.coordinates import (
     dataset_to_skycoord,
     skycoord_to_dataset,
 )
+from astropy_xarray.coordinates.core import dump_time
 from astropy_xarray.coordinates.sky_coord import (
     _skycoord_differential_component_names,
     _skycoord_representation_component_names,
@@ -346,3 +347,31 @@ def test_skycoord_roundtrip(
     assert actual.is_equivalent_frame(expected)
     assert ds.coords.equals(xr.Coordinates(dict(coords)))
     np.testing.assert_array_equal(actual, expected)
+
+
+def test_skycoord_obstime():
+    empty = SkyCoord(ra=[[0.1], [0.2]] * u.deg, dec=[[0.5], [0.7]] * u.deg)
+    assert empty.obstime is None
+    assert "obstime" not in skycoord_to_dataset(empty).attrs
+
+    value = SkyCoord(
+        ra=[[0.1], [0.2]] * u.deg, dec=[[0.5], [0.7]] * u.deg, obstime="J2000"
+    )
+    assert value.obstime == Time("J2000")
+    assert skycoord_to_dataset(value).attrs["obstime"] == dump_time(Time("J2000"))
+
+    value = SkyCoord(
+        ra=[[0.1], [0.2]] * u.deg,
+        dec=[[0.5], [0.7]] * u.deg,
+        frame=FK4(),
+    )
+    assert value.obstime == Time("B1950")
+    assert "obstime" not in skycoord_to_dataset(empty).attrs
+
+    with pytest.raises(ValueError):
+        value = SkyCoord(
+            ra=[[0.1], [0.2]] * u.deg,
+            dec=[[0.5], [0.7]] * u.deg,
+            frame=FK4(),
+            obstime="J2000",
+        )

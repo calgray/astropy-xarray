@@ -7,6 +7,7 @@ import xarray as xr
 from astropy.coordinates import SkyCoord
 from astropy.utils import ShapedLikeNDArray
 
+from astropy_xarray.coordinates.core import dump_time
 from astropy_xarray.coordinates.frame import dump_frame, load_frame, load_representation
 
 _ArrayLike = list | np.ndarray | ShapedLikeNDArray
@@ -104,8 +105,11 @@ def skycoord_to_dataset(
     return xr.Dataset(
         coords=coords if coords is not None else None,
         data_vars=_skycoord_to_dataarrays(skycoord, coords),
-        attrs=dict(
-            frame=dump_frame(skycoord.frame),
+        attrs=dict(frame=dump_frame(skycoord.frame))
+        | (
+            dict(obstime=dump_time(skycoord.obstime))
+            if skycoord.obstime is not None and not hasattr(skycoord.frame, "obstime")
+            else {}
         ),
     )
 
@@ -128,5 +132,5 @@ def dataset_to_skycoord(ds: xr.Dataset) -> SkyCoord:
         {k: v.data for k, v in dsq.data_vars.items()},
     )
     frame.representation_type = ds.attrs["frame"]["representation_type"]
-    frame.differential_type = ds.attrs["frame"]["differential_type"]
+    frame.differential_type = ds.attrs["frame"].get("differential_type")
     return SkyCoord(frame)

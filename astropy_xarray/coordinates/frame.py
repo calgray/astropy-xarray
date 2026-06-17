@@ -176,11 +176,6 @@ def load_frame(frame_dict: dict, with_data: bool = False) -> BaseCoordinateFrame
             frame = HCRS(
                 obstime=load_optional_object(Time, frame_dict["obstime"]), **kwargs
             )
-        case "itrs":
-            frame = ITRS(
-                location=load_optional_earthlocation(frame_dict["location"]),
-                **kwargs,
-            )
         case "altaz":
             frame = AltAz(
                 obstime=load_optional_object(Time, frame_dict["obstime"]),
@@ -274,7 +269,7 @@ def load_representation(
     frame_name: str | None,
     data: dict[str, np.ndarray],
 ) -> BaseRepresentation:
-    RepresentationClass = representation.REPRESENTATION_CLASSES.get(representation_type)
+    RepresentationClass = representation.REPRESENTATION_CLASSES[representation_type]
     DifferentialClass = representation.DIFFERENTIAL_CLASSES.get(differential_type)
 
     if frame_name is None:

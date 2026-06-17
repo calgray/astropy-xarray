@@ -104,19 +104,15 @@ def skycoord_to_dataset(
         quantified dataset.
     """
     return xr.Dataset(
-        coords=coords if coords is not None else None,
+        coords=coords,
         data_vars=_skycoord_to_dataarrays(skycoord, coords),
-        attrs=dict(frame=dump_frame(skycoord.frame))
-        | (
-            dict(obstime=dump_time(skycoord.obstime))
-            if skycoord.obstime is not None and not hasattr(skycoord.frame, "obstime")
-            else {}
-        )
-        | (
-            dict(equinox=dump_time(skycoord.equinox))
-            if skycoord.equinox is not None and not hasattr(skycoord.frame, "equinox")
-            else {}
-        ),
+        attrs={"frame": dump_frame(skycoord.frame)}
+        | {
+            attr: dump_time(value)
+            for attr in ("obstime", "equinox")
+            if (value := getattr(skycoord, attr)) is not None
+            and not hasattr(skycoord.frame, attr)
+        },
     )
 
 

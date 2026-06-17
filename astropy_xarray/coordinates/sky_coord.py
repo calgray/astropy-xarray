@@ -5,8 +5,10 @@ import astropy.units as u
 import numpy as np
 import xarray as xr
 from astropy.coordinates import SkyCoord
+from astropy.time import Time
 from astropy.utils import ShapedLikeNDArray
 
+from astropy_xarray.coordinates.core import dump_time, load_optional_object
 from astropy_xarray.coordinates.frame import dump_frame, load_frame, load_representation
 
 _ArrayLike = list | np.ndarray | ShapedLikeNDArray
@@ -102,11 +104,15 @@ def skycoord_to_dataset(
         quantified dataset.
     """
     return xr.Dataset(
-        coords=coords if coords is not None else None,
+        coords=coords,
         data_vars=_skycoord_to_dataarrays(skycoord, coords),
-        attrs=dict(
-            frame=dump_frame(skycoord.frame),
-        ),
+        attrs={"frame": dump_frame(skycoord.frame)}
+        | {
+            attr: dump_time(value)
+            for attr in ("obstime", "equinox")
+            if (value := getattr(skycoord, attr)) is not None
+            and not hasattr(skycoord.frame, attr)
+        },
     )
 
 
@@ -128,5 +134,15 @@ def dataset_to_skycoord(ds: xr.Dataset) -> SkyCoord:
         {k: v.data for k, v in dsq.data_vars.items()},
     )
     frame.representation_type = ds.attrs["frame"]["representation_type"]
-    frame.differential_type = ds.attrs["frame"]["differential_type"]
-    return SkyCoord(frame)
+    frame.differential_type = ds.attrs["frame"].get("differential_type")
+
+    kwargs = {
+        attr: value
+        for attr in ("obstime", "equinox")
+        if not hasattr(frame, attr)
+        and (value := load_optional_object(Time, ds.attrs.get(attr))) is not None
+    }
+    return SkyCoord(
+        frame,
+        **kwargs,
+    )

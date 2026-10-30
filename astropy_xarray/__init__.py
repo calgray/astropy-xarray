@@ -20,6 +20,7 @@ import astropy.units
 import astropy_xarray.time_compat  # noqa: F401
 from astropy_xarray import accessors, formatting, testing  # noqa: F401
 from astropy_xarray.index import AstropyIndex
+from astropy_xarray._expects import expects
 
 try:
     __version__ = version("astropy-xarray")
@@ -35,4 +36,5 @@ astropy.units.Quantity._repr_inline_ = formatting.inline_repr
 __all__ = [
     "testing",
     "AstropyIndex",
+    "expects"
 ]

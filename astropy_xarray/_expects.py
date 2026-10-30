@@ -3,13 +3,11 @@ import inspect
 import itertools
 from inspect import Parameter
 
-import pint
-import pint.testing
+import astropy
 import xarray as xr
 
-from pint_xarray.accessors import get_registry
-from pint_xarray.conversion import extract_units, strip_units
-from pint_xarray.itertools import zip_mappings
+from astropy_xarray.conversion import extract_units, strip_units
+from astropy_xarray.itertools import zip_mappings
 
 variable_parameters = (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD)
 

@@ -1,6 +1,6 @@
 import pytest
 
-from pint_xarray.itertools import separate, unique, zip_mappings
+from astropy_xarray.itertools import separate, unique, zip_mappings
 
 
 @pytest.mark.parametrize(

@@ -1,43 +1,42 @@
 import re
 
-import pint
+import astropy
+import astropy.units as u
 import pytest
 import xarray as xr
 
-import pint_xarray
-from pint_xarray.testing import assert_units_equal
-
-ureg = pint_xarray.unit_registry
+import astropy_xarray
+from astropy_xarray.testing import assert_units_equal
 
 
 class TestExpects:
     @pytest.mark.parametrize(
         ["values", "units", "expected"],
         (
-            ((ureg.Quantity(1, "m"), 2), ("mm", None, None), 500),
-            ((ureg.Quantity(1, "m"), ureg.Quantity(0.5, "s")), ("mm", "ms", None), 2),
+            ((u.Quantity(1, "m"), 2), ("mm", None, None), 500),
+            ((u.Quantity(1, "m"), u.Quantity(0.5, "s")), ("mm", "ms", None), 2),
             (
-                (xr.DataArray(4).pint.quantify("km"), 2),
+                (xr.DataArray(4).astropy.quantify("km"), 2),
                 ("m", None, None),
                 xr.DataArray(2000),
             ),
             (
                 (
-                    xr.DataArray([4, 2, 0]).pint.quantify("cm"),
-                    xr.DataArray([4, 2, 1]).pint.quantify("mg"),
+                    xr.DataArray([4, 2, 0]).astropy.quantify("cm"),
+                    xr.DataArray([4, 2, 1]).astropy.quantify("mg"),
                 ),
                 ("m", "g", None),
                 xr.DataArray([10, 10, 0]),
             ),
             (
-                (ureg.Quantity(16, "m"), 2, ureg.Quantity(4, "s")),
+                (u.Quantity(16, "m"), 2, u.Quantity(4, "s")),
                 ("mm", None, "ms"),
                 2,
             ),
         ),
     )
     def test_args(self, values, units, expected):
-        @pint_xarray.expects(*units)
+        @astropy_xarray.expects(*units)
         def func(a, b, c=1):
             return a / (b * c)
 
@@ -45,8 +44,8 @@ class TestExpects:
 
         if isinstance(actual, xr.DataArray):
             xr.testing.assert_identical(actual, expected)
-        elif isinstance(actual, pint.Quantity):
-            pint.testing.assert_equal(actual, expected)
+        elif isinstance(actual, u.Quantity):
+            astropy.testing.assert_equal(actual, expected)
         else:
             assert actual == expected
 
@@ -54,7 +53,7 @@ class TestExpects:
         ["value", "units", "error", "message", "multiple"],
         (
             (
-                ureg.Quantity(1, "m"),
+                u.Quantity(1, "m"),
                 (None, None),
                 TypeError,
                 "Passed in a quantity where none was expected",
@@ -69,9 +68,9 @@ class TestExpects:
                 False,
             ),
             (
-                ureg.Quantity(1, "m"),
+                u.Quantity(1, "m"),
                 ("nonsense_unit", None),
-                pint.errors.UndefinedUnitError,
+                astropy.errors.UndefinedUnitError,
                 "'nonsense_unit' is not defined in the unit registry",
                 True,
             ),
@@ -87,7 +86,7 @@ class TestExpects:
 
         with pytest.raises(root_error, match=root_message) as excinfo:
 
-            @pint_xarray.expects(*units)
+            @astropy_xarray.expects(*units)
             def func(a, b=1):
                 return a * b
 
@@ -109,29 +108,29 @@ class TestExpects:
         ["values", "units", "expected"],
         (
             (
-                {"a": ureg.Quantity(1, "m"), "b": 2},
+                {"a": u.Quantity(1, "m"), "b": 2},
                 {"a": "mm", "b": None, "c": None},
                 1000,
             ),
             (
-                {"a": 2, "b": ureg.Quantity(100, "cm")},
+                {"a": 2, "b": u.Quantity(100, "cm")},
                 {"a": None, "b": "m", "c": None},
                 4,
             ),
             (
-                {"a": ureg.Quantity(1, "m"), "b": ureg.Quantity(0.5, "s")},
+                {"a": u.Quantity(1, "m"), "b": u.Quantity(0.5, "s")},
                 {"a": "mm", "b": "ms", "c": None},
                 4,
             ),
             (
-                {"a": xr.DataArray(4).pint.quantify("km"), "b": 2},
+                {"a": xr.DataArray(4).astropy.quantify("km"), "b": 2},
                 {"a": "m", "b": None, "c": None},
                 xr.DataArray(4000),
             ),
             (
                 {
-                    "a": xr.DataArray([4, 2, 0]).pint.quantify("cm"),
-                    "b": xr.DataArray([4, 2, 1]).pint.quantify("mg"),
+                    "a": xr.DataArray([4, 2, 0]).astropy.quantify("cm"),
+                    "b": xr.DataArray([4, 2, 1]).astropy.quantify("mg"),
                 },
                 {"a": "m", "b": "g", "c": None},
                 xr.DataArray([20, 20, 0]),
@@ -139,7 +138,7 @@ class TestExpects:
         ),
     )
     def test_kwargs(self, values, units, expected):
-        @pint_xarray.expects(**units)
+        @astropy_xarray.expects(**units)
         def func(a, b, c=2):
             return a / b * c
 
@@ -147,33 +146,33 @@ class TestExpects:
 
         if isinstance(actual, xr.DataArray):
             xr.testing.assert_identical(actual, expected)
-        elif isinstance(actual, pint.Quantity):
-            pint.testing.assert_equal(actual, expected)
+        elif isinstance(actual, u.Quantity):
+            astropy.testing.assert_equal(actual, expected)
         else:
             assert actual == expected
 
     @pytest.mark.parametrize(
         ["values", "return_value_units", "expected"],
         (
-            ((1, 2), ("m", "s"), (ureg.Quantity(1, "m"), ureg.Quantity(2, "s"))),
-            ((1, 2), "m / s", ureg.Quantity(0.5, "m / s")),
+            ((1, 2), ("m", "s"), (u.Quantity(1, "m"), u.Quantity(2, "s"))),
+            ((1, 2), "m / s", u.Quantity(0.5, "m / s")),
             ((1, 2), None, 0.5),
             (
                 (xr.DataArray(2), 2),
                 ("m", "s"),
-                (xr.DataArray(2).pint.quantify("m"), ureg.Quantity(2, "s")),
+                (xr.DataArray(2).astropy.quantify("m"), u.Quantity(2, "s")),
             ),
             (
                 (xr.DataArray(2), 2),
                 "kg / m^2",
-                xr.DataArray(1).pint.quantify("kg / m^2"),
+                xr.DataArray(1).astropy.quantify("kg / m^2"),
             ),
         ),
     )
     def test_return_value(self, values, return_value_units, expected):
         multiple = isinstance(return_value_units, tuple)
 
-        @pint_xarray.expects(a=None, b=None, return_value=return_value_units)
+        @astropy_xarray.expects(a=None, b=None, return_value=return_value_units)
         def func(a, b):
             if multiple:
                 return a, b
@@ -184,12 +183,12 @@ class TestExpects:
         if isinstance(actual, xr.DataArray):
             xr.testing.assert_identical(actual, expected)
         elif isinstance(actual, pint.Quantity):
-            pint.testing.assert_equal(actual, expected)
+            astropy.testing.assert_equal(actual, expected)
         else:
             assert actual == expected
 
     def test_return_value_none(self):
-        @pint_xarray.expects(None)
+        @astropy_xarray.expects(None)
         def func(a):
             return None
 
@@ -197,7 +196,7 @@ class TestExpects:
         assert actual is None
 
     def test_return_value_none_error(self):
-        @pint_xarray.expects(return_value="Hz")
+        @astropy_xarray.expects(return_value="Hz")
         def func():
             return None
 
@@ -254,7 +253,7 @@ class TestExpects:
 
         with pytest.raises(root_error, match=root_message) as excinfo:
 
-            @pint_xarray.expects(a=None, b=None, return_value=return_value_units)
+            @astropy_xarray.expects(a=None, b=None, return_value=return_value_units)
             def func(a, b):
                 if not isinstance(multiple_units, bool) and multiple_units == 1:
                     print("return 1-tuple")
@@ -279,12 +278,12 @@ class TestExpects:
             raise AssertionError(f"exception {exc!r} did not match pattern {message!r}")
 
     def test_datasets(self):
-        @pint_xarray.expects({"m": "kg", "a": "m / s^2"}, return_value={"f": "newtons"})
+        @astropy_xarray.expects({"m": "kg", "a": "m / s^2"}, return_value={"f": "newtons"})
         def second_law(ds):
             f_da = ds["m"] * ds["a"]
             return f_da.to_dataset(name="f")
 
-        ds = xr.Dataset({"m": 0.1, "a": 10}).pint.quantify(
+        ds = xr.Dataset({"m": 0.1, "a": 10}).astropy.quantify(
             {"m": "tons", "a": "feet / second^2"}
         )
 

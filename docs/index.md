@@ -14,7 +14,7 @@
 
 Seamless interoperability between [astropy] and [xarray].
 
-# Documentation
+## Documentation
 
 ```{warning}
 This package is experimental, and new versions might introduce backwards incompatible

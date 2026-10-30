@@ -7,6 +7,12 @@ This page contains a auto-generated summary of `astropy-xarray`'s API.
 ```{eval-rst}
 .. autosummary::
    :toctree: generated/
+   :template: autosummary/accessor_attribute.rst 
+
+   xarray.Dataset.astropy.loc
+
+.. autosummary::
+   :toctree: generated/
    :template: autosummary/accessor_method.rst
 
    xarray.Dataset.astropy.quantify
@@ -70,6 +76,24 @@ This page contains a auto-generated summary of `astropy-xarray`'s API.
    astropy_xarray.coordinates.skycoord_to_dataset
    astropy_xarray.coordinates.load_frame
    astropy_xarray.coordinates.load_representation
+```
+
+## Wrapping quantity-unaware functions
+
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+
+   astropy_xarray.expects
+```
+
+## Exceptions
+
+```{eval-rst}
+.. autosummary::
+   :toctree: generated/
+
+   astropy_xarray.errors.AstropyExceptionGroup
 ```
 
 ## Testing

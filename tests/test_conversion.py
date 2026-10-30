@@ -2,10 +2,12 @@ import astropy.units
 import numpy as np
 import pandas as pd
 import pytest
+from tlz.dicttoolz import dissoc
 from xarray import Coordinates, DataArray, Dataset, Variable
 from xarray.core.indexes import PandasIndex
 
 from astropy_xarray import conversion
+from astropy_xarray.errors import AstropyExceptionGroup
 from astropy_xarray.index import AstropyIndex
 from tests.utils import (
     assert_array_equal,
@@ -287,7 +289,7 @@ class TestXarrayFunctions:
 
         index = PandasIndex(x, dim="x")
         if units.get("x") is not None:
-            index = AstropyIndex(index=index, units=units.get("x"))
+            index = AstropyIndex(index=index, units={"x": units.get("x")})
 
         obj = Dataset({"a": ("x", a), "b": ("x", b)}, coords={"u": ("x", u), "x": x})
         coords = Coordinates(
@@ -338,17 +340,20 @@ class TestXarrayFunctions:
             pytest.param(
                 "none",
                 {"a": Unit("g"), "b": Unit("Pa"), "u": Unit("ms"), "x": Unit("mm")},
-                None,
-                ValueError,
-                "(?s)Cannot convert variables:.+'u'",
+                {
+                    "a": (pint.DimensionalityError, "'a'"),
+                    "b": (pint.DimensionalityError, "'b'"),
+                    "u": (pint.DimensionalityError, "'u'"),
+                    "x": (ValueError, "'x'"),
+                },
                 id="none-with units",
             ),
-            pytest.param("data", {}, None, None, None, id="data-no units"),
+            pytest.param("data", {}, None, {}, id="data-no units"),
             pytest.param(
                 "data",
                 {"a": Unit("g"), "b": Unit("Pa")},
                 None,
-                None,
+                {},
                 None,
                 id="data-compatible units",
             ),
@@ -363,26 +368,15 @@ class TestXarrayFunctions:
             pytest.param(
                 "data",
                 {"a": Unit("s"), "b": Unit("m")},
-                None,
-                ValueError,
-                "(?s)Cannot convert variables:.+'a'",
+                {
+                    "a": (pint.DimensionalityError, "'a'"),
+                    "b": (pint.DimensionalityError, "'b'"),
+                },
                 id="data-incompatible units",
             ),
+            pytest.param("dims", {}, None, {}, id="dims-no units"),
             pytest.param(
-                "dims",
-                {},
-                None,
-                None,
-                None,
-                id="dims-no units",
-            ),
-            pytest.param(
-                "dims",
-                {"x": Unit("mm")},
-                None,
-                None,
-                None,
-                id="dims-compatible units",
+                "dims", {"x": Unit("mm")}, None, {}, id="dims-compatible units"
             ),
             pytest.param(
                 "dims",
@@ -396,8 +390,8 @@ class TestXarrayFunctions:
                 "dims",
                 {"x": Unit("ms")},
                 None,
-                ValueError,
-                "(?s)Cannot convert variables:.+'x'",
+                PintExceptionGroup,
+                {"x": (ValueError, "'x'")},
                 id="dims-incompatible units",
             ),
             pytest.param(
@@ -412,7 +406,7 @@ class TestXarrayFunctions:
                 "coords",
                 {"u": Unit("ms")},
                 None,
-                None,
+                {"u": (pint.DimensionalityError, "'u'")},
                 None,
                 id="coords-compatible units",
             ),
@@ -427,14 +421,17 @@ class TestXarrayFunctions:
             pytest.param(
                 "coords",
                 {"u": Unit("mm")},
-                None,
-                ValueError,
-                "(?s)Cannot convert variables:.+'u'",
+                {
+                    "u": (
+                        pint.DimensionalityError,
+                        "incompatible units for variable 'u'",
+                    )
+                },
                 id="coords-incompatible units",
             ),
         ),
     )
-    def test_convert_units(self, type, variant, units, equivalencies, error, match):
+    def test_convert_units(self, type, variant, units, equivalencies, error, suberrors, match):
         variants = {
             "none": {"a": None, "b": None, "u": None, "x": None},
             "data": {"a": Unit("kg"), "b": Unit("hPa"), "u": None, "x": None},
@@ -469,9 +466,17 @@ class TestXarrayFunctions:
         )
         if type == "DataArray":
             obj = obj["a"]
+            suberrors = dissoc(suberrors, "b")
 
         if error is not None:
-            with pytest.raises(error, match=match):
+            matchers = [
+                pytest.RaisesExc(err, match=match) for err, match in suberrors.values()
+            ]
+            with pytest.RaisesGroup(
+                *matchers,
+                match="Cannot convert variables",
+                check=lambda eg: isinstance(eg, PintExceptionGroup),
+            ):
                 conversion.convert_units(obj, units, equivalencies)
 
             return
@@ -485,11 +490,12 @@ class TestXarrayFunctions:
         expected_u = convert_quantity(
             q_u, units.get("u", original_units.get("u")), equivalencies
         )
-        expected_x = convert_quantity(q_x, units.get("x"), equivalencies)
+        expected_x = convert_quantity(q_x, units.get("x"))
         expected_index = PandasIndex(pd.Index(strip_quantity(expected_x)), "x")
-        if units.get("x") is not None:
+        expected_index_units = units.get("x", original_units.get("x"))
+        if expected_index_units is not None:
             expected_index = AstropyIndex(
-                index=expected_index, units={"x": units.get("x")}
+                index=expected_index, units={"x": expected_index_units}
             )
 
         expected = Dataset(
@@ -681,7 +687,7 @@ class TestXarrayFunctions:
 
 class TestIndexerFunctions:
     @pytest.mark.parametrize(
-        ["indexers", "units", "equivalencies", "expected", "error", "match"],
+        ["indexers", "units", "expected", "error", "match"],
         (
             pytest.param(
                 {"x": 1}, {"x": None}, None, {"x": 1}, None, None, id="scalar-no units"
@@ -691,8 +697,8 @@ class TestIndexerFunctions:
                 {"x": "dimensionless"},
                 None,
                 None,
-                ValueError,
-                "(?s)Cannot convert indexers:.+'x'",
+                PintExceptionGroup,
+                {"x": (ValueError, "'x'")},
                 id="scalar-dimensionless",
             ),
             pytest.param(
@@ -799,8 +805,8 @@ class TestIndexerFunctions:
                 {"x": Unit("ms")},
                 None,
                 None,
-                ValueError,
-                "(?s)Cannot convert indexers:.+'x'",
+                PintExceptionGroup,
+                {"x": (pint.DimensionalityError, "'x'")},
                 id="slice-incompatible units",
             ),
             pytest.param(
@@ -808,8 +814,8 @@ class TestIndexerFunctions:
                 {"x": Unit("s")},
                 None,
                 None,
-                ValueError,
-                "(?s)Cannot convert indexers:.+'x'",
+                PintExceptionGroup,
+                {"x": (pint.DimensionalityError, "'x'")},
                 id="slice-incompatible units-mixed",
             ),
             pytest.param(
@@ -824,10 +830,17 @@ class TestIndexerFunctions:
         ),
     )
     def test_convert_indexer_units(
-        self, indexers, units, equivalencies, expected, error, match
+    def test_convert_indexer_units(self, indexers, units, expected, error, match):
     ):
         if error is not None:
-            with pytest.raises(error, match=match):
+            matchers = [
+                pytest.RaisesExc(err, match=match) for err, match in suberrors.values()
+            ]
+            with pytest.RaisesGroup(
+                *matchers,
+                match="Cannot convert indexers",
+                check=lambda eg: isinstance(eg, PintExceptionGroup),
+            ):
                 conversion.convert_indexer_units(indexers, units, equivalencies)
         else:
             actual = conversion.convert_indexer_units(indexers, units, equivalencies)

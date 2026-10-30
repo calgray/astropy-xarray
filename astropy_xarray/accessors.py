@@ -28,7 +28,7 @@ from xarray.core.dtypes import NA
 from astropy_xarray import conversion
 from astropy_xarray.conversion import AstropyUnitType, no_unit_values
 from astropy_xarray.coordinates.sky_coord import dataset_to_skycoord
-from astropy_xarray.errors import format_error_message
+from astropy_xarray.errors import create_exception_group, format_error_message
 
 # sentinel to fallback to attribute unit, then value container type
 _default: Final = object()
@@ -321,7 +321,7 @@ class AstropyDataArrayAccessor:
                     invalid_units[name] = (reported_unit, type, e)
 
         if invalid_units:
-            raise ValueError(format_error_message(invalid_units, "parse"))
+            raise create_exception_group(invalid_units, "parse")
 
         existing_units = {
             name: unit
@@ -346,7 +346,7 @@ class AstropyDataArrayAccessor:
                 )
                 for name, (old, new) in overwritten_units.items()
             }
-            raise ValueError(format_error_message(errors, "attach"))
+            raise create_exception_group(errors, "attach")
 
         return self.da.pipe(conversion.strip_unit_attributes).pipe(
             conversion.attach_units, new_units
@@ -1071,7 +1071,7 @@ class AstropyDatasetAccessor:
                     invalid_units[name] = (reported_unit, type, e)
 
         if invalid_units:
-            raise ValueError(format_error_message(invalid_units, "parse"))
+            raise create_exception_group(invalid_units, "parse")
 
         existing_units = {
             name: unit
@@ -1096,7 +1096,7 @@ class AstropyDatasetAccessor:
                 )
                 for name, (old, new) in overwritten_units.items()
             }
-            raise ValueError(format_error_message(errors, "attach"))
+            raise create_exception_group(errors, "attach")
 
         return self.ds.pipe(conversion.strip_unit_attributes).pipe(
             conversion.attach_units, new_units

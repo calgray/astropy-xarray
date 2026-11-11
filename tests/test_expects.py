@@ -1,6 +1,9 @@
 import re
+import sys
 
 import astropy
+import astropy.tests.helper
+import astropy.units
 import astropy.units as u
 import pytest
 import xarray as xr
@@ -8,6 +11,10 @@ import xarray as xr
 import astropy_xarray
 from astropy_xarray.testing import assert_units_equal
 
+if sys.version_info >= (3, 13, 0):
+    from builtins import ExceptionGroup
+else:
+    from exceptiongroup import ExceptionGroup
 
 class TestExpects:
     @pytest.mark.parametrize(
@@ -45,7 +52,7 @@ class TestExpects:
         if isinstance(actual, xr.DataArray):
             xr.testing.assert_identical(actual, expected)
         elif isinstance(actual, u.Quantity):
-            astropy.testing.assert_equal(actual, expected)
+            astropy.tests.helper.assert_quantity_allclose(actual, expected)
         else:
             assert actual == expected
 
@@ -70,8 +77,8 @@ class TestExpects:
             (
                 u.Quantity(1, "m"),
                 ("nonsense_unit", None),
-                astropy.errors.UndefinedUnitError,
-                "'nonsense_unit' is not defined in the unit registry",
+                ValueError,
+                "'nonsense_unit' did not parse as unit",
                 True,
             ),
         ),
@@ -147,7 +154,7 @@ class TestExpects:
         if isinstance(actual, xr.DataArray):
             xr.testing.assert_identical(actual, expected)
         elif isinstance(actual, u.Quantity):
-            astropy.testing.assert_equal(actual, expected)
+            astropy.tests.helper.assert_quantity_allclose(actual, expected)
         else:
             assert actual == expected
 
@@ -182,8 +189,8 @@ class TestExpects:
         actual = func(*values)
         if isinstance(actual, xr.DataArray):
             xr.testing.assert_identical(actual, expected)
-        elif isinstance(actual, pint.Quantity):
-            astropy.testing.assert_equal(actual, expected)
+        elif isinstance(actual, u.Quantity):
+            astropy.tests.helper.assert_quantity_allclose(actual, expected)
         else:
             assert actual == expected
 
@@ -236,7 +243,8 @@ class TestExpects:
                 False,
                 "mismatched number of return values: expected 1 but got 2",
             ),
-            (1, False, TypeError, True, "units must be of type"),
+            ([], False, TypeError, True, "cannot be converted to a Unit"),
+            (0, False, astropy.units.errors.UnitScaleError, True, "cannot create a unit with a scale of 0"),
             (("m",), False, ValueError, False, ".*expected a 1-sized tuple.*"),
             ("m", 1, ValueError, False, ".*expected a single return value.*"),
         ),
@@ -278,18 +286,34 @@ class TestExpects:
             raise AssertionError(f"exception {exc!r} did not match pattern {message!r}")
 
     def test_datasets(self):
-        @astropy_xarray.expects({"m": "kg", "a": "m / s^2"}, return_value={"f": "newtons"})
+        import astropy.units.imperial
+
+        astropy.units.imperial.enable()
+        @astropy_xarray.expects({"m": "kg", "a": "m / s^2"}, return_value={"f": "newton"})
         def second_law(ds):
             f_da = ds["m"] * ds["a"]
             return f_da.to_dataset(name="f")
 
         ds = xr.Dataset({"m": 0.1, "a": 10}).astropy.quantify(
-            {"m": "tons", "a": "feet / second^2"}
+            {"m": "ton", "a": "foot / second^2"},
         )
 
-        expected = xr.Dataset({"f": ds["m"] * ds["a"]}).pint.to("newtons")
+        expected = xr.Dataset({"f": ds["m"] * ds["a"]}).astropy.to("newton")
 
         actual = second_law(ds)
 
         assert_units_equal(actual, expected)
         xr.testing.assert_allclose(actual, expected)
+
+    def test_equivalencies(self):
+        import numpy as np
+
+        # experimental statistical fit
+        @astropy_xarray.expects("s", "C", return_value="m")
+        def distance_at_speed_of_sound(time, temp):
+            return time * 331.3 * np.sqrt(1 + temp / 273.15)
+
+        np.testing.assert_allclose(
+            distance_at_speed_of_sound(1 * u.s, 20.0 * u.C),
+            343.21462268 * u.m
+        )

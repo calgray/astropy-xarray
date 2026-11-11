@@ -2,12 +2,20 @@ import functools
 import inspect
 import itertools
 from inspect import Parameter
+import sys
 
 import astropy
+import astropy.units as u
 import xarray as xr
 
 from astropy_xarray.conversion import extract_units, strip_units
 from astropy_xarray.itertools import zip_mappings
+
+
+if sys.version_info >= (3, 13, 0):
+    from builtins import ExceptionGroup
+else:
+    from exceptiongroup import ExceptionGroup
 
 variable_parameters = (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD)
 
@@ -21,7 +29,7 @@ def _number_of_results(result):
         return 1
 
 
-def expects(*args_units, return_value=None, **kwargs_units):
+def expects(*args_units, return_value=None, equivalencies=None, **kwargs_units):
     """
     Decorator which ensures the inputs and outputs of the decorated
     function are expressed in the expected units.
@@ -87,7 +95,7 @@ def expects(*args_units, return_value=None, **kwargs_units):
 
     See Also
     --------
-    pint.wraps
+    pint.registry.UnitRegistry.wraps
 
     Examples
     --------
@@ -137,61 +145,32 @@ def expects(*args_units, return_value=None, **kwargs_units):
             # don't apply defaults, as those can't be quantities and thus must
             # already be in the correct units
 
-            spec_units = dict(
-                enumerate(
-                    itertools.chain.from_iterable(
-                        spec.values() if isinstance(spec, dict) else (spec,)
-                        for spec in params_units.arguments.values()
-                        if spec is not None
-                    )
-                )
-            )
-            params_units_ = dict(
-                enumerate(
-                    itertools.chain.from_iterable(
-                        (
-                            extract_units(param)
-                            if isinstance(param, (xr.DataArray, xr.Dataset))
-                            else (param.units,)
-                        )
-                        for name, param in params.arguments.items()
-                        if isinstance(param, (xr.DataArray, xr.Dataset, pint.Quantity))
-                    )
-                )
-            )
-
-            ureg = get_registry(
-                None,
-                dict(spec_units) if spec_units else {},
-                dict(params_units_) if params_units else {},
-            )
-
             errors = []
             for name, (value, units) in zip_mappings(
                 params.arguments, params_units.arguments
             ):
                 try:
                     if units is None:
-                        if isinstance(value, pint.Quantity) or (
+                        if isinstance(value, u.Quantity) or (
                             isinstance(value, (xr.DataArray, xr.Dataset))
-                            and value.pint.units
+                            and value.astropy.unit
                         ):
                             raise TypeError(
                                 "Passed in a quantity where none was expected"
                             )
                         continue
-                    if isinstance(value, pint.Quantity):
-                        params.arguments[name] = value.m_as(units)
+                    if isinstance(value, u.Quantity):
+                        params.arguments[name] = value.to(units, equivalencies).value
                     elif isinstance(value, (xr.DataArray, xr.Dataset)):
-                        params.arguments[name] = strip_units(value.pint.to(units))
+                        params.arguments[name] = strip_units(value.astropy.to(units, equivalencies))
                     else:
                         raise TypeError(
                             f"Attempting to convert non-quantity {value} to {units}."
                         )
                 except (
                     TypeError,
-                    pint.errors.UndefinedUnitError,
-                    pint.errors.DimensionalityError,
+                    ValueError,
+                    ValueError,
                 ) as e:
                     e.add_note(
                         f"expects: raised while trying to convert parameter {name}"
@@ -235,9 +214,9 @@ def expects(*args_units, return_value=None, **kwargs_units):
                 if units is not None:
                     try:
                         if isinstance(value, (xr.Dataset, xr.DataArray)):
-                            value = value.pint.quantify(units)
+                            value = value.astropy.quantify(units)
                         else:
-                            value = ureg.Quantity(value, units)
+                            value = u.Quantity(value, units)
                     except Exception as e:
                         e.add_note(
                             f"expects: raised while trying to convert return value {index}"

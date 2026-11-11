@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-from xarray.core.indexes import IndexSelResult, PandasIndex
+from xarray.core.indexing import IndexSelResult
+from xarray.indexes import PandasIndex
 
 from astropy_xarray.index import AstropyIndex
 
@@ -38,7 +39,7 @@ def test_init_error():
     base_index = PandasIndex(pd.Index([1, 2, 3]), dim="x")
 
     with pytest.raises(TypeError, match="dict of coordinate names to units"):
-        PintIndex(index=base_index, units=ureg.Unit("s"))
+        AstropyIndex(index=base_index, units=ureg.Unit("s"))
 
 
 def test_replace():
@@ -214,11 +215,11 @@ def test_equals(other, expected):
 
 @pytest.mark.filterwarnings("error")
 def test_align_equals_warning():
-    index1 = PintIndex(
+    index1 = AstropyIndex(
         index=PandasIndex(pd.Index([1, 2]), dim="x"),
         units={"x": ureg.Unit("m")},
     )
-    index2 = PintIndex(
+    index2 = AstropyIndex(
         index=PandasIndex(pd.Index([0, 1, 2]), dim="y"),
         units={"y": ureg.Unit("m")},
     )
@@ -260,7 +261,7 @@ def test_roll(shifts, expected_index):
 @pytest.mark.parametrize("name_dict", ({"y2": "y3"}, {"y2": "y1"}))
 def test_rename(name_dict, dims_dict):
     wrapped_index = PandasIndex(pd.Index([1, 2], name="y2"), dim="y")
-    index = AstropyIndex(index=wrapped_index, units={"y": ureg.Unit("m")})
+    index = AstropyIndex(index=wrapped_index, units={"y2": ureg.Unit("m")})
 
     actual = index.rename(name_dict, dims_dict)
     expected = AstropyIndex(
@@ -296,11 +297,11 @@ def test_repr_inline(wrapped_index):
 
 @pytest.mark.parametrize("wrapped_index", (PandasIndex(pd.Index([1, 2]), dim="x"),))
 def test_repr(wrapped_index):
-    index = PintIndex(index=wrapped_index, units={"x": ureg.Unit("m")})
+    index = AstropyIndex(index=wrapped_index, units={"x": ureg.Unit("m")})
 
     # TODO: parametrize
     actual = repr(index)
 
-    assert "<PintIndex" in actual
+    assert "<AstropyIndex" in actual
     assert "'x': 'm'" in actual
     assert wrapped_index.__class__.__name__ in actual

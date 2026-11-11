@@ -139,11 +139,11 @@ class AstropyIndex(Index):
         name = self.__class__.__name__
         wrapped_name = self.index.__class__.__name__
 
-        formatted_units = {n: f"{u:~P}" for n, u in self.units.items()}
+        formatted_units = {n: f"{u:unicode}" for n, u in self.units.items()}
         return f"{name}({wrapped_name}, units={formatted_units})"
 
     def __repr__(self):
-        formatted_units = {n: f"{u:~P}" for n, u in self.units.items()}
+        formatted_units = {n: f"{u:unicode}" for n, u in self.units.items()}
         summary = f"<{self.__class__.__name__} (units={formatted_units})>"
 
         return "\n".join([summary, repr(self.index)])

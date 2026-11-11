@@ -109,7 +109,7 @@ class TestQuantifyDataArray:
         with pytest.RaisesGroup(
             pytest.RaisesExc(ValueError, match="already has units"),
             match="Cannot attach units",
-            check=lambda eg: isinstance(eg, PintExceptionGroup),
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             da.astropy.quantify("s")
 
@@ -140,7 +140,7 @@ class TestQuantifyDataArray:
         with pytest.RaisesGroup(
             pytest.RaisesExc(ValueError, match="already has units"),
             match="Cannot attach units",
-            check=lambda eg: isinstance(eg, PintExceptionGroup),
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             arr.astropy.quantify({"x": "s"})
 
@@ -160,7 +160,7 @@ class TestQuantifyDataArray:
         with pytest.RaisesGroup(
             pytest.RaisesExc(ValueError, match="already has units"),
             match="Cannot attach units",
-            check=lambda eg: isinstance(eg, PintExceptionGroup),
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             arr.astropy.quantify({"x": "s"})
 
@@ -187,10 +187,10 @@ class TestQuantifyDataArray:
         da = example_unitless_da
         with pytest.RaisesGroup(
             pytest.RaisesExc(
-                pint.UndefinedUnitError, match=rf"{da.name}: .+ \(parameter\)"
+                ValueError, match=rf"{da.name}: .+ \(parameter\)"
             ),
             match="Cannot parse units",
-            check=lambda eg: isinstance(eg, PintExceptionGroup),
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             da.astropy.quantify(units="aecjhbav")
 
@@ -199,10 +199,10 @@ class TestQuantifyDataArray:
         da.attrs["units"] = "aecjhbav"
         with pytest.RaisesGroup(
             pytest.RaisesExc(
-                pint.UndefinedUnitError, match=rf"{da.name}: .+ \(attribute\)"
+                ValueError, match=rf"{da.name}: .+ \(attribute\)"
             ),
             match="Cannot parse units",
-            check=lambda eg: isinstance(eg, PintExceptionGroup),
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             da.astropy.quantify()
 
@@ -394,7 +394,7 @@ class TestQuantifyDataSet:
         with pytest.RaisesGroup(
             pytest.RaisesExc(ValueError, match="already has units"),
             match="Cannot attach units",
-            check=lambda eg: isinstance(eg, PintExceptionGroup),
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             example_quantity_ds.astropy.quantify({"funds": "kg"})
 
@@ -425,7 +425,7 @@ class TestQuantifyDataSet:
         with pytest.RaisesGroup(
             pytest.RaisesExc(ValueError, match="already has units"),
             match="Cannot attach units",
-            check=lambda eg: isinstance(eg, PintExceptionGroup),
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             ds.astropy.quantify({"x": "s"})
 
@@ -433,10 +433,10 @@ class TestQuantifyDataSet:
         ds = example_unitless_ds
         with pytest.RaisesGroup(
             pytest.RaisesExc(
-                pint.UndefinedUnitError, match=r"'users': .+ \(parameter\)"
+                ValueError, match=r"'users': .+ \(parameter\)"
             ),
             match="Cannot parse units",
-            check=lambda eg: isinstance(eg, PintExceptionGroup),
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             ds.astropy.quantify(units={"users": "aecjhbav"})
 
@@ -445,10 +445,10 @@ class TestQuantifyDataSet:
         ds.users.attrs["units"] = "aecjhbav"
         with pytest.RaisesGroup(
             pytest.RaisesExc(
-                pint.UndefinedUnitError, match=r"'users': .+ \(attribute\)"
+                ValueError, match=r"'users': .+ \(attribute\)"
             ),
             match="Cannot parse units",
-            check=lambda eg: isinstance(eg, PintExceptionGroup),
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             ds.astropy.quantify()
 
@@ -456,10 +456,10 @@ class TestQuantifyDataSet:
         ds = example_unitless_ds
         with pytest.RaisesGroup(
             pytest.RaisesExc(
-                pint.UndefinedUnitError, match=r"'users': aecjhbav \(parameter\)"
+                ValueError, match=r"'users': aecjhbav \(parameter\)"
             ),
             match="Cannot parse units",
-            check=lambda eg: isinstance(eg, PintExceptionGroup),
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             ds.astropy.quantify(units={"users": "aecjhbav"})
 
@@ -873,12 +873,12 @@ def test_sel(obj, indexers, equivalencies, expected, error):
                     "x": (
                         "x",
                         [10, 20, 30],
-                        {"units": unit_registry.Unit("dm"), "long_name": "length"},
+                        {"units": u.Unit("dm"), "long_name": "length"},
                     ),
                     "y": (
                         "y",
                         [60, 120],
-                        {"units": unit_registry.Unit("s"), "long_name": "time"},
+                        {"units": u.Unit("s"), "long_name": "time"},
                     ),
                 }
             ),
@@ -888,12 +888,12 @@ def test_sel(obj, indexers, equivalencies, expected, error):
                     "x": (
                         "x",
                         [10, 30],
-                        {"units": unit_registry.Unit("dm"), "long_name": "length"},
+                        {"units": u.Unit("dm"), "long_name": "length"},
                     ),
                     "y": (
                         "y",
                         [60],
-                        {"units": unit_registry.Unit("s"), "long_name": "time"},
+                        {"units": u.Unit("s"), "long_name": "time"},
                     ),
                 }
             ),

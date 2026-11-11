@@ -1,16 +1,13 @@
 import functools
 import inspect
-import itertools
-from inspect import Parameter
 import sys
+from inspect import Parameter
 
-import astropy
 import astropy.units as u
 import xarray as xr
 
-from astropy_xarray.conversion import extract_units, strip_units
+from astropy_xarray.conversion import strip_units
 from astropy_xarray.itertools import zip_mappings
-
 
 if sys.version_info >= (3, 13, 0):
     from builtins import ExceptionGroup
@@ -27,6 +24,16 @@ def _number_of_results(result):
         return 0
     else:
         return 1
+
+
+def _add_note_310(exc: BaseException, note: str) -> None:
+    """Exception add_note backwards compatibility for python 3.10"""
+    if hasattr(exc, "add_note"):
+        exc.add_note(note)
+    elif exc.args:
+        exc.args = (f"{exc.args[0]}\n{note}", *exc.args[1:])
+    else:
+        exc.args = (note,)
 
 
 def expects(*args_units, return_value=None, equivalencies=None, **kwargs_units):
@@ -162,7 +169,9 @@ def expects(*args_units, return_value=None, equivalencies=None, **kwargs_units):
                     if isinstance(value, u.Quantity):
                         params.arguments[name] = value.to(units, equivalencies).value
                     elif isinstance(value, (xr.DataArray, xr.Dataset)):
-                        params.arguments[name] = strip_units(value.astropy.to(units, equivalencies))
+                        params.arguments[name] = strip_units(
+                            value.astropy.to(units, equivalencies)
+                        )
                     else:
                         raise TypeError(
                             f"Attempting to convert non-quantity {value} to {units}."
@@ -172,8 +181,8 @@ def expects(*args_units, return_value=None, equivalencies=None, **kwargs_units):
                     ValueError,
                     ValueError,
                 ) as e:
-                    e.add_note(
-                        f"expects: raised while trying to convert parameter {name}"
+                    _add_note_310(
+                        e, f"expects: raised while trying to convert parameter {name}"
                     )
                     errors.append(e)
 
@@ -218,8 +227,9 @@ def expects(*args_units, return_value=None, equivalencies=None, **kwargs_units):
                         else:
                             value = u.Quantity(value, units)
                     except Exception as e:
-                        e.add_note(
-                            f"expects: raised while trying to convert return value {index}"
+                        _add_note_310(
+                            e,
+                            f"expects: raised while trying to convert return value {index}",
                         )
                         errors.append(e)
 

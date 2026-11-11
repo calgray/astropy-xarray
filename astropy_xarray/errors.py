@@ -76,11 +76,15 @@ class AstropyExceptionGroup(ExceptionGroup, ValueError):
     pass
 
 
-def _add_note(e: Exception, note: str) -> Exception:
-    if sys.version_info >= (3, 11, 0):
-        e.add_note(note)
-
-    return e
+def _add_note_310(exc: Exception, note: str) -> Exception:
+    """Exception add_note backwards compatibility for python 3.10"""
+    if hasattr(exc, "add_note"):
+        exc.add_note(note)
+    elif exc.args:
+        exc.args = (f"{exc.args[0]}\n{note}", *exc.args[1:])
+    else:
+        exc.args = (note,)
+    return exc
 
 
 def create_exception_group(mapping: dict[Hashable, Any], op: str) -> ExceptionGroup:
@@ -88,25 +92,25 @@ def create_exception_group(mapping: dict[Hashable, Any], op: str) -> ExceptionGr
         case "attach":
             message = "Cannot attach units"
             errors = [
-                _add_note(e, f"cannot attach units to variable {key!r}: {unit}")
+                _add_note_310(e, f"cannot attach units to variable {key!r}: {unit}")
                 for key, (unit, e) in mapping.items()
             ]
         case "parse":
             message = "Cannot parse units"
             errors = [
-                _add_note(e, f"invalid units for variable {key!r}: {unit} ({type})")
+                _add_note_310(e, f"invalid units for variable {key!r}: {unit} ({type})")
                 for key, (unit, type, e) in mapping.items()
             ]
         case "convert":
             message = "Cannot convert variables"
             errors = [
-                _add_note(e, f"incompatible units for variable {key!r}")
+                _add_note_310(e, f"incompatible units for variable {key!r}")
                 for key, e in mapping.items()
             ]
         case "convert_indexers":
             message = "Cannot convert indexers"
             errors = [
-                _add_note(e, f"incompatible units for indexer for {key!r}")
+                _add_note_310(e, f"incompatible units for indexer for {key!r}")
                 for key, e in mapping.items()
             ]
         case _:  # pragma: no cover

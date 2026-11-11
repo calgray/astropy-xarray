@@ -13,8 +13,13 @@ from astropy_xarray.testing import assert_units_equal
 
 if sys.version_info >= (3, 13, 0):
     from builtins import ExceptionGroup
+
+    from astropy.units.errors import UnitScaleError
 else:
     from exceptiongroup import ExceptionGroup
+
+    UnitScaleError = ValueError
+
 
 class TestExpects:
     @pytest.mark.parametrize(
@@ -243,8 +248,17 @@ class TestExpects:
                 False,
                 "mismatched number of return values: expected 1 but got 2",
             ),
-            ([], False, TypeError, True, "cannot be converted to a Unit"),
-            (0, False, astropy.units.errors.UnitScaleError, True, "cannot create a unit with a scale of 0"),
+            ([], False, TypeError, True, "(can not|cannot) be converted to a Unit"),
+            pytest.param(
+                0,
+                False,
+                UnitScaleError,
+                True,
+                "cannot create a unit with a scale of 0",
+                marks=pytest.mark.skipif(
+                    sys.version_info <= (3, 11, 0), reason="requires astropy >=7"
+                ),
+            ),
             (("m",), False, ValueError, False, ".*expected a 1-sized tuple.*"),
             ("m", 1, ValueError, False, ".*expected a single return value.*"),
         ),
@@ -289,7 +303,10 @@ class TestExpects:
         import astropy.units.imperial
 
         astropy.units.imperial.enable()
-        @astropy_xarray.expects({"m": "kg", "a": "m / s^2"}, return_value={"f": "newton"})
+
+        @astropy_xarray.expects(
+            {"m": "kg", "a": "m / s^2"}, return_value={"f": "newton"}
+        )
         def second_law(ds):
             f_da = ds["m"] * ds["a"]
             return f_da.to_dataset(name="f")
@@ -314,6 +331,5 @@ class TestExpects:
             return time * 331.3 * np.sqrt(1 + temp / 273.15)
 
         np.testing.assert_allclose(
-            distance_at_speed_of_sound(1 * u.s, 20.0 * u.C),
-            343.21462268 * u.m
+            distance_at_speed_of_sound(1 * u.s, 20.0 * u.C), 343.21462268 * u.m
         )

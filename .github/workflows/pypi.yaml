@@ -4,17 +4,34 @@ on:
   release:
     types:
       - published
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
 
 jobs:
   build-artifacts:
+    name: Build packages
     runs-on: ubuntu-latest
+    if: |
     if: github.repository == 'calgray/astropy-xarray'
+      && (
+        github.event_name == 'release'
+        || contains(github.event.pull_request.labels.*.name, 'release')
+      )
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7.0.0
         name: Install Python
         with:
           python-version: "3.x"
@@ -40,12 +57,13 @@ jobs:
           else
             echo "✅ Looks good"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.1
         with:
           name: releases
           path: dist
 
   upload-to-pypi:
+    name: Upload to PyPI
     needs: build-artifacts
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
@@ -54,14 +72,14 @@ jobs:
       name: pypi
       url: https://pypi.org/p/astropy-xarray
     permissions:
-      id-token: write
+      id-token: write # upload packages to pypi
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8.0.1
         with:
           name: releases
           path: dist
       - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc
+        uses: pypa/gh-action-pypi-publish@v1.14.1
         with:
           verbose: true

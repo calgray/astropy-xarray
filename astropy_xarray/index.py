@@ -1,4 +1,3 @@
-# Copyright 2014-2024, xarray developers
 # Copyright 2025, Callan Gray
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 from xarray import Variable
 from xarray.core.indexes import Index, PandasIndex
 
@@ -30,6 +30,11 @@ class AstropyIndex(Index):
         units : mapping of hashable to unit-like
             The units of the indexed coordinates
         """
+        if not isinstance(units, dict):
+            raise TypeError(
+                "Index units have to be a dict of coordinate names to units."
+            )
+
         self.index = index
         self.units = units
 
@@ -88,25 +93,57 @@ class AstropyIndex(Index):
     def reindex_like(self, other):
         raise NotImplementedError()
 
-    def equals(self, other):
+    def equals(self, other, *, exclude=None):
         if not isinstance(other, AstropyIndex):
             return False
 
-        # for now we require exactly matching units to avoid the potentially expensive conversion
+        # for now we require exactly matching units to avoid the potentially
+        # expensive conversion
         if self.units != other.units:
             return False
 
-        # last to avoid the potentially expensive comparison
-        return self.index.equals(other.index)
+        # TODO:
+        # - remove try-except once we can drop xarray<2025.06.0
+        # - remove compat once we can require a version of xarray that completed
+        #   the deprecation cycle
+        try:
+            from xarray.core.indexes import _wrap_index_equals
+
+            equals = _wrap_index_equals(self.index)
+            kwargs = {"exclude": exclude}
+        except ImportError:  # pragma: no cover
+            equals = self.index.equals
+            signature = inspect.signature(self.index.equals)
+
+            if "exclude" in signature.parameters:
+                kwargs = {"exclude": exclude}
+            else:
+                kwargs = {}
+
+        # Last to avoid the potentially expensive comparison
+        return equals(other.index, **kwargs)
 
     def roll(self, shifts):
         return self._replace(self.index.roll(shifts))
 
     def rename(self, name_dict, dims_dict):
-        return self._replace(self.index.rename(name_dict, dims_dict))
+        new_units = {new: self.units[old] for old, new in name_dict.items()}
+        return self.__class__(
+            index=self.index.rename(name_dict, dims_dict), units=new_units
+        )
 
     def __getitem__(self, indexer):
         return self._replace(self.index[indexer])
 
     def _repr_inline_(self, max_width):
-        return f"{self.__class__.__name__}({self.index.__class__.__name__})"
+        name = self.__class__.__name__
+        wrapped_name = self.index.__class__.__name__
+
+        formatted_units = {n: f"{u:unicode}" for n, u in self.units.items()}
+        return f"{name}({wrapped_name}, units={formatted_units})"
+
+    def __repr__(self):
+        formatted_units = {n: f"{u:unicode}" for n, u in self.units.items()}
+        summary = f"<{self.__class__.__name__} (units={formatted_units})>"
+
+        return "\n".join([summary, repr(self.index)])

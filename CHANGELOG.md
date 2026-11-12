@@ -5,6 +5,31 @@
 
 # What's New
 
+## 0.2.2 (31 October 2026)
+
+- Added improvements from `pint-xarray`:
+  - Properly rename the coordinate units (:pull:`351`).
+    By [Justus Magin](https://github.com/keewis).
+  - Don't rely on ``xarray``'s default behavior regarding ``attrs`` in {py:func}`astropy_xarray.expects`.
+    By [Justus Magin](https://github.com/keewis).
+  - Fix quantifying a existing index and adjust the index conversion tests.
+    By [Justus Magin](https://github.com/keewis).
+  - Switch to using pixi for all dependency management.
+    By [Justus Magin](https://github.com/keewis).
+  - Added the {py:func}`pint_xarray.expects` decorator to allow wrapping quantity-unaware functions.
+    By [Justus Magin](https://github.com/keewis) and [Tom Nicholas](https://github.com/TomNicholas>).
+  - Follow the change in signature of {py:meth}`xarray.Index.equals`
+    By [Justus Magin](https://github.com/keewis).
+  - Add units to the inline `repr` and define a custom `repr`.
+    By [Justus Magin](https://github.com/keewis).
+  - Collect multiple errors into a specific exception group
+    By [Justus Magin](https://github.com/keewis).
+  - Pass `sel` options to the wrapped array.
+    By [Bhavin Patel](https://github.com/bpatel2107>).
+- Support python 3.14.
+
+By [Callan Gray](https://github.com/calgray).
+
 ## 0.2.1 (18 Apr 2026)
 
 - Added support for `astropy==7.2.0` sky coordinates.

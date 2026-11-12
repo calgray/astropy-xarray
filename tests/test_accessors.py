@@ -10,6 +10,7 @@ from astropy.units import Quantity, Unit, UnitBase
 from numpy.testing import assert_array_equal
 
 from astropy_xarray import accessors, conversion
+from astropy_xarray.errors import AstropyExceptionGroup
 from astropy_xarray.index import AstropyIndex
 from tests.utils import (
     assert_equal,
@@ -105,7 +106,11 @@ class TestQuantifyDataArray:
 
     def test_error_when_changing_units(self, example_quantity_da):
         da = example_quantity_da
-        with pytest.raises(ValueError, match="already has units"):
+        with pytest.RaisesGroup(
+            pytest.RaisesExc(ValueError, match="already has units"),
+            match="Cannot attach units",
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
+        ):
             da.astropy.quantify("s")
 
     def test_attach_no_units(self):
@@ -132,7 +137,11 @@ class TestQuantifyDataArray:
             dims="x",
             coords={"x": ("x", [-1, 0, 1], {"units": u.Unit("m")})},
         )
-        with pytest.raises(ValueError, match="already has units"):
+        with pytest.RaisesGroup(
+            pytest.RaisesExc(ValueError, match="already has units"),
+            match="Cannot attach units",
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
+        ):
             arr.astropy.quantify({"x": "s"})
 
     def test_dimension_coordinate_array(self):
@@ -148,7 +157,11 @@ class TestQuantifyDataArray:
         ds = xr.Dataset(coords={"x": ("x", [10], {"units": u.Unit("m")})})
         arr = ds.x
 
-        with pytest.raises(ValueError):
+        with pytest.RaisesGroup(
+            pytest.RaisesExc(ValueError, match="already has units"),
+            match="Cannot attach units",
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
+        ):
             arr.astropy.quantify({"x": "s"})
 
     def test_dimension_coordinate_array_already_quantified_same_units(self):
@@ -172,14 +185,24 @@ class TestQuantifyDataArray:
 
     def test_error_on_nonsense_units(self, example_unitless_da):
         da = example_unitless_da
-        with pytest.raises(ValueError, match=str(da.name)):
+        with pytest.RaisesGroup(
+            pytest.RaisesExc(
+                ValueError, match=rf"{da.name}: .+ \(parameter\)"
+            ),
+            match="Cannot parse units",
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
+        ):
             da.astropy.quantify(units="aecjhbav")
 
     def test_error_on_nonsense_units_attrs(self, example_unitless_da):
         da = example_unitless_da
         da.attrs["units"] = "aecjhbav"
-        with pytest.raises(
-            ValueError, match=rf"{da.name}: {da.attrs['units']} \(attribute\)"
+        with pytest.RaisesGroup(
+            pytest.RaisesExc(
+                ValueError, match=rf"{da.name}: .+ \(attribute\)"
+            ),
+            match="Cannot parse units",
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             da.astropy.quantify()
 
@@ -368,7 +391,11 @@ class TestQuantifyDataSet:
         )
 
     def test_error_when_already_units(self, example_quantity_ds):
-        with pytest.raises(ValueError, match="already has units"):
+        with pytest.RaisesGroup(
+            pytest.RaisesExc(ValueError, match="already has units"),
+            match="Cannot attach units",
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
+        ):
             example_quantity_ds.astropy.quantify({"funds": "kg"})
 
     def test_attach_no_units(self):
@@ -395,25 +422,45 @@ class TestQuantifyDataSet:
         ds = xr.Dataset(
             coords={"x": ("x", [-1, 0, 1], {"units": u.Unit("m")})},
         )
-        with pytest.raises(ValueError, match="already has units"):
+        with pytest.RaisesGroup(
+            pytest.RaisesExc(ValueError, match="already has units"),
+            match="Cannot attach units",
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
+        ):
             ds.astropy.quantify({"x": "s"})
 
     def test_error_on_nonsense_units(self, example_unitless_ds):
         ds = example_unitless_ds
-        with pytest.raises(ValueError):
+        with pytest.RaisesGroup(
+            pytest.RaisesExc(
+                ValueError, match=r"'users': .+ \(parameter\)"
+            ),
+            match="Cannot parse units",
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
+        ):
             ds.astropy.quantify(units={"users": "aecjhbav"})
 
     def test_error_on_nonsense_units_attrs(self, example_unitless_ds):
         ds = example_unitless_ds
         ds.users.attrs["units"] = "aecjhbav"
-        with pytest.raises(
-            ValueError, match=rf"'users': {ds.users.attrs['units']} \(attribute\)"
+        with pytest.RaisesGroup(
+            pytest.RaisesExc(
+                ValueError, match=r"'users': .+ \(attribute\)"
+            ),
+            match="Cannot parse units",
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
         ):
             ds.astropy.quantify()
 
     def test_error_indicates_problematic_variable(self, example_unitless_ds):
         ds = example_unitless_ds
-        with pytest.raises(ValueError, match="'users'"):
+        with pytest.RaisesGroup(
+            pytest.RaisesExc(
+                ValueError, match=r"'users': aecjhbav \(parameter\)"
+            ),
+            match="Cannot parse units",
+            check=lambda eg: isinstance(eg, AstropyExceptionGroup),
+        ):
             ds.astropy.quantify(units={"users": "aecjhbav"})
 
     def test_existing_units(self, example_quantity_ds):
@@ -819,6 +866,39 @@ def test_sel(obj, indexers, equivalencies, expected, error):
             None,
             KeyError,
             id="Dataset-incompatible units",
+        ),
+        pytest.param(
+            xr.Dataset(
+                {
+                    "x": (
+                        "x",
+                        [10, 20, 30],
+                        {"units": u.Unit("dm"), "long_name": "length"},
+                    ),
+                    "y": (
+                        "y",
+                        [60, 120],
+                        {"units": u.Unit("s"), "long_name": "time"},
+                    ),
+                }
+            ),
+            {"x": Quantity([10, 30], "dm"), "y": Quantity([60], "s")},
+            xr.Dataset(
+                {
+                    "x": (
+                        "x",
+                        [10, 30],
+                        {"units": u.Unit("dm"), "long_name": "length"},
+                    ),
+                    "y": (
+                        "y",
+                        [60],
+                        {"units": u.Unit("s"), "long_name": "time"},
+                    ),
+                }
+            ),
+            None,
+            id="Dataset-coords with attrs",
         ),
         pytest.param(
             xr.DataArray(

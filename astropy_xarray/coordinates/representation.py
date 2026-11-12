@@ -1,3 +1,5 @@
+from importlib.metadata import version
+
 import astropy.units as u
 from astropy.coordinates import (
     CartesianDifferential,
@@ -6,6 +8,7 @@ from astropy.coordinates import (
     EarthLocation,
     SphericalRepresentation,
 )
+from packaging.version import Version
 
 from astropy_xarray.coordinates.core import dump_quantity
 
@@ -72,10 +75,17 @@ def dump_cartesian_differential(cd: CartesianDifferential):
         "d_z": dump_quantity(cd.d_z),
     }
 
-
-def load_cartesian_differential(kwargs: dict):
-    return CartesianDifferential(
-        d_x=u.Quantity(**kwargs["d_x"]),
-        d_y=u.Quantity(**kwargs["d_y"]),
-        d_z=u.Quantity(**kwargs["d_z"]),
-    )
+if Version(version("astropy")) < Version("8.0.0"):
+    def load_cartesian_differential(kwargs: dict):
+        return CartesianDifferential(
+            d_x=u.Quantity(**kwargs["d_x"]),
+            d_y=u.Quantity(**kwargs["d_y"]),
+            d_z=u.Quantity(**kwargs["d_z"]),
+        )
+else:
+    def load_cartesian_differential(kwargs: dict):
+        return CartesianDifferential(
+            d_x=u.Quantity(**kwargs["x"]),
+            d_y=u.Quantity(**kwargs["y"]),
+            d_z=u.Quantity(**kwargs["z"]),
+        )

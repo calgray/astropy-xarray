@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-from xarray.core.indexes import IndexSelResult, PandasIndex
+from xarray.core.indexing import IndexSelResult
+from xarray.indexes import PandasIndex
 
 from astropy_xarray.index import AstropyIndex
 
@@ -28,17 +29,24 @@ def indexer_equal(first, second):
 )
 @pytest.mark.parametrize("units", [ureg.Unit("m"), ureg.Unit("s")])
 def test_init(base_index, units):
-    index = AstropyIndex(index=base_index, units=units)
+    index = AstropyIndex(index=base_index, units={base_index.dim: units})
 
     assert index.index.equals(base_index)
-    assert index.units == units
+    assert index.units == {base_index.dim: units}
+
+
+def test_init_error():
+    base_index = PandasIndex(pd.Index([1, 2, 3]), dim="x")
+
+    with pytest.raises(TypeError, match="dict of coordinate names to units"):
+        AstropyIndex(index=base_index, units=ureg.Unit("s"))
 
 
 def test_replace():
-    old_index = PandasIndex([1, 2, 3], dim="y")
+    old_index = PandasIndex([1, 2, 3], dim="x")
     new_index = PandasIndex([0.1, 0.2, 0.3], dim="x")
 
-    old = AstropyIndex(index=old_index, units=ureg.Unit("m"))
+    old = AstropyIndex(index=old_index, units={"x": ureg.Unit("m")})
     new = old._replace(new_index)
 
     assert new.index.equals(new_index)
@@ -205,6 +213,28 @@ def test_equals(other, expected):
     assert actual == expected
 
 
+@pytest.mark.filterwarnings("error")
+def test_align_equals_warning():
+    index1 = AstropyIndex(
+        index=PandasIndex(pd.Index([1, 2]), dim="x"),
+        units={"x": ureg.Unit("m")},
+    )
+    index2 = AstropyIndex(
+        index=PandasIndex(pd.Index([0, 1, 2]), dim="y"),
+        units={"y": ureg.Unit("m")},
+    )
+
+    ds = xr.Dataset(
+        {"a": (["y", "x"], [[-1, 1], [0, 2], [1, 3]])},
+        coords=xr.Coordinates(
+            {"x": [1, 2], "y": [0, 1, 2]}, indexes={"x": index1, "y": index2}
+        ),
+    )
+
+    # trigger comparison
+    ds["a"] * ds["x"] * ds["y"]
+
+
 @pytest.mark.parametrize(
     ["shifts", "expected_index"],
     (
@@ -231,11 +261,12 @@ def test_roll(shifts, expected_index):
 @pytest.mark.parametrize("name_dict", ({"y2": "y3"}, {"y2": "y1"}))
 def test_rename(name_dict, dims_dict):
     wrapped_index = PandasIndex(pd.Index([1, 2], name="y2"), dim="y")
-    index = AstropyIndex(index=wrapped_index, units={"y": ureg.Unit("m")})
+    index = AstropyIndex(index=wrapped_index, units={"y2": ureg.Unit("m")})
 
     actual = index.rename(name_dict, dims_dict)
     expected = AstropyIndex(
-        index=wrapped_index.rename(name_dict, dims_dict), units=index.units
+        index=wrapped_index.rename(name_dict, dims_dict),
+        units={name_dict["y2"]: ureg.Unit("m")},
     )
 
     assert actual.equals(expected)
@@ -254,10 +285,23 @@ def test_getitem(indexer):
 
 @pytest.mark.parametrize("wrapped_index", (PandasIndex(pd.Index([1, 2]), dim="x"),))
 def test_repr_inline(wrapped_index):
-    index = AstropyIndex(index=wrapped_index, units=ureg.Unit("m"))
+    index = AstropyIndex(index=wrapped_index, units={"x": ureg.Unit("m")})
 
     # TODO: parametrize
     actual = index._repr_inline_(90)
 
     assert "AstropyIndex" in actual
+    assert wrapped_index.__class__.__name__ in actual
+    assert "units" in actual
+
+
+@pytest.mark.parametrize("wrapped_index", (PandasIndex(pd.Index([1, 2]), dim="x"),))
+def test_repr(wrapped_index):
+    index = AstropyIndex(index=wrapped_index, units={"x": ureg.Unit("m")})
+
+    # TODO: parametrize
+    actual = repr(index)
+
+    assert "<AstropyIndex" in actual
+    assert "'x': 'm'" in actual
     assert wrapped_index.__class__.__name__ in actual

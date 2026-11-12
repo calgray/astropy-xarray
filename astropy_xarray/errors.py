@@ -13,6 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
+if sys.version_info >= (3, 13, 0):
+    from builtins import ExceptionGroup
+else:
+    from exceptiongroup import ExceptionGroup
+from collections.abc import Hashable
+from typing import Any
+
 
 def format_error_message(mapping, op):
     sep = "\n    " if len(mapping) == 1 else "\n -- "
@@ -56,3 +65,55 @@ def format_error_message(mapping, op):
         raise ValueError("invalid op")
 
     return message
+
+
+class AstropyExceptionGroup(ExceptionGroup, ValueError):
+    """Exception group for errors related to unit operations
+
+    Raised whenever there's the possibility of multiple errors.
+    """
+
+    pass
+
+
+def _add_note_310(exc: Exception, note: str) -> Exception:
+    """Exception add_note backwards compatibility for python 3.10"""
+    if hasattr(exc, "add_note"):
+        exc.add_note(note)
+    elif exc.args:
+        exc.args = (f"{exc.args[0]}\n{note}", *exc.args[1:])
+    else:
+        exc.args = (note,)
+    return exc
+
+
+def create_exception_group(mapping: dict[Hashable, Any], op: str) -> ExceptionGroup:
+    match op:
+        case "attach":
+            message = "Cannot attach units"
+            errors = [
+                _add_note_310(e, f"cannot attach units to variable {key!r}: {unit}")
+                for key, (unit, e) in mapping.items()
+            ]
+        case "parse":
+            message = "Cannot parse units"
+            errors = [
+                _add_note_310(e, f"invalid units for variable {key!r}: {unit} ({type})")
+                for key, (unit, type, e) in mapping.items()
+            ]
+        case "convert":
+            message = "Cannot convert variables"
+            errors = [
+                _add_note_310(e, f"incompatible units for variable {key!r}")
+                for key, e in mapping.items()
+            ]
+        case "convert_indexers":
+            message = "Cannot convert indexers"
+            errors = [
+                _add_note_310(e, f"incompatible units for indexer for {key!r}")
+                for key, e in mapping.items()
+            ]
+        case _:  # pragma: no cover
+            raise ValueError("invalid op")
+
+    return AstropyExceptionGroup(message, errors)
